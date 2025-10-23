@@ -4,7 +4,7 @@
 ------------ LineString/Polygon version ------------
 WITH vars AS (
     -- The MMSI(s) of the vessel(s) you want to investigate --
-    SELECT ARRAY[210051000, 636015105]::bigint[] AS mmsis
+    SELECT ARRAY[219449000]::bigint[] AS mmsis
 ),
 trajectory AS (
     SELECT
