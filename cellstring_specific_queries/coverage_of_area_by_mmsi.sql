@@ -3,7 +3,7 @@
 WITH area AS (
     SELECT cellstring
     FROM benchmark.area_cs
-    WHERE area_id = 3
+    WHERE area_id = 2
 ),
 traj_cover AS (
     SELECT
