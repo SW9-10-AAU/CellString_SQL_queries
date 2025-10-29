@@ -1,6 +1,7 @@
 --- Testing on Hals-Egense area (area_id = 2)
 
 --- ST_ version (3s)---
+EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     traj.trajectory_id,
     area.area_id,
@@ -12,6 +13,7 @@ WHERE area.area_id = 2
     AND ST_Intersects(traj.geom, area.geom);
 
 --- CST_ version (824ms) ---
+EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     traj.trajectory_id,
     area.area_id,
