@@ -1,5 +1,9 @@
 -- Longest trajectory (trajectory_id = 9133) consists of 76,822 points / 348,230 cells
 -- mmsi 219000429 (Rødby-Putgarden ferry)
+SELECT *
+FROM prototype1.trajectory_ls
+WHERE trajectory_id = 9133;
+
 
 --- ST_ version (~1s) = 763 trajectories ---
 SELECT DISTINCT

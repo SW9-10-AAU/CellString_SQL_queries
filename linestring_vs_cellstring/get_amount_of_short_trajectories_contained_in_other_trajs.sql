@@ -1,14 +1,16 @@
+-- Find the amount small trajectories (2 points) contained in another trajectory
+
 -- CellString version (7s)
 SELECT
     traj_a.mmsi,
     traj_a.trajectory_id,
-    COUNT(traj_b.trajectory_id) as duplicate_count
+    COUNT(DISTINCT traj_b.trajectory_id) as duplicate_count
 FROM
-    prototype1.trajectory_cs AS traj_a,
-    prototype1.trajectory_cs AS traj_b
-WHERE cardinality(traj_b.cellstring) < 3
+    prototype1.trajectory_cs AS traj_a
+JOIN prototype1.trajectory_cs AS traj_b
+    ON traj_a.mmsi = traj_b.mmsi
     AND traj_a.trajectory_id <> traj_b.trajectory_id
-    AND traj_a.mmsi = traj_b.mmsi
+WHERE cardinality(traj_b.cellstring) < 3
     AND CST_Contains(traj_a.cellstring, traj_b.cellstring)
 GROUP BY traj_a.trajectory_id
 ORDER BY duplicate_count DESC;
@@ -20,14 +22,13 @@ ORDER BY duplicate_count DESC;
 SELECT
     traj_a.mmsi,
     traj_a.trajectory_id,
-    COUNT(traj_b.trajectory_id) AS duplicate_count
+    COUNT(DISTINCT traj_b.trajectory_id) as duplicate_count
 FROM
-    prototype1.trajectory_ls AS traj_a,
-    prototype1.trajectory_ls AS traj_b
-WHERE
-    ST_NumPoints(traj_b.geom) < 3
+    prototype1.trajectory_ls AS traj_a
+JOIN prototype1.trajectory_ls AS traj_b
+    ON traj_a.mmsi = traj_b.mmsi
     AND traj_a.trajectory_id <> traj_b.trajectory_id
-    AND traj_a.mmsi = traj_b.mmsi
+WHERE ST_NumPoints(traj_b.geom) < 3
     AND ST_Contains(traj_a.geom, traj_b.geom)
-GROUP BY traj_a.trajectory_id, traj_a.mmsi
+GROUP BY traj_a.trajectory_id
 ORDER BY duplicate_count DESC;

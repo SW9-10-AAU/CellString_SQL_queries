@@ -1,6 +1,29 @@
 -- Trajectory intersects with area (simple query)
 
---- ST_ version (Læsø) ---
+--- ST_ version (Hals-Egense) (1.5s) ---
+SELECT
+    traj.trajectory_id,
+    traj.mmsi
+FROM
+    prototype1.trajectory_ls AS traj,
+    benchmark.area_poly as area
+WHERE
+    area.area_id = 2
+    AND ST_Intersects(traj.geom, area.geom);
+
+--- CellString version (Hals-Egense) (0.36s) ---
+SELECT
+    traj.trajectory_id,
+    traj.mmsi
+FROM
+    prototype1.trajectory_cs AS traj,
+    benchmark.area_cs as area
+WHERE
+    area.area_id = 2
+    AND CST_Intersects(traj.cellstring, area.cellstring);
+
+
+--- ST_ version (Læsø) (2s)---
 SELECT
     traj.trajectory_id,
     traj.mmsi
@@ -22,28 +45,4 @@ FROM
     benchmark.area_cs as area
 WHERE
     area.area_id = 1
-    AND CST_Intersects(traj.cellstring, area.cellstring);
-
-
-
---- ST_ version (Hals-Egense) (1.5s) ---
-SELECT
-    traj.trajectory_id,
-    traj.mmsi
-FROM
-    prototype1.trajectory_ls AS traj,
-    benchmark.area_poly as area
-WHERE
-    area.area_id = 2
-    AND ST_Intersects(traj.geom, area.geom);
-
---- CellString version (Hals-Egense) (0.36s) ---
-SELECT
-    traj.trajectory_id,
-    traj.mmsi
-FROM
-    prototype1.trajectory_cs AS traj,
-    benchmark.area_cs as area
-WHERE
-    area.area_id = 2
     AND CST_Intersects(traj.cellstring, area.cellstring);
