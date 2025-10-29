@@ -23,6 +23,31 @@ WHERE
     AND CST_Intersects(traj.cellstring, area.cellstring);
 
 
+
+--- ST_ version (Helsingør-Helsingborg) (1.5s) ---
+SELECT
+    traj.trajectory_id,
+    traj.mmsi
+FROM
+    prototype1.trajectory_ls AS traj,
+    benchmark.area_poly as area
+WHERE
+    area.area_id = 3
+    AND ST_Intersects(traj.geom, area.geom);
+
+--- CellString version (Helsingør-Helsingborg) (8s) ---
+SELECT
+    traj.trajectory_id,
+    traj.mmsi
+FROM
+    prototype1.trajectory_cs AS traj,
+    benchmark.area_cs as area
+WHERE
+    area.area_id = 3
+    AND CST_Intersects(traj.cellstring, area.cellstring);
+
+
+
 --- ST_ version (Læsø) (2s)---
 SELECT
     traj.trajectory_id,
