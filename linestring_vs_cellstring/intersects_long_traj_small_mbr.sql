@@ -6,6 +6,7 @@ WHERE trajectory_id = 9133;
 
 
 --- ST_ version (~1s) = 763 trajectories ---
+EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT DISTINCT
     trajB.trajectory_id
 FROM
@@ -16,6 +17,7 @@ WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND ST_Intersects(trajA.geom, trajB.geom);
 
 --- CellString version (~1m 7s) = 767 trajectories ---
+EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT DISTINCT
     trajB.trajectory_id
 FROM
