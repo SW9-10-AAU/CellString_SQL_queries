@@ -1,9 +1,12 @@
 -- Coverage of area (%) by mmsi
 
+-- Hals-Egense (0.8s)
+-- Helsingør-Helsingborg (23s)
+-- Læsø (????)
 WITH area AS (
     SELECT cellstring
     FROM benchmark.area_cs
-    WHERE area_id = 2
+    WHERE area_id = 1
 ),
 traj_cover AS (
     SELECT
