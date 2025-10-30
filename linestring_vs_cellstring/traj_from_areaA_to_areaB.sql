@@ -3,7 +3,8 @@
 --- ST_ version (Hals-Egense to Helsingør-Helsingborg) (1.5s) ---
 SELECT
     traj.trajectory_id,
-    traj.mmsi
+    traj.mmsi,
+    traj.geom
 FROM
     prototype1.trajectory_ls AS traj,
     benchmark.area_poly as areaA,
@@ -16,7 +17,8 @@ WHERE areaA.area_id = 2
 --- CST_ version (Hals-Egense to Helsingør-Helsingborg) (8s) ---
 SELECT
     traj.trajectory_id,
-    traj.mmsi
+    traj.mmsi,
+    traj.cellstring
 FROM
     prototype1.trajectory_cs AS traj,
     benchmark.area_cs as areaA,
