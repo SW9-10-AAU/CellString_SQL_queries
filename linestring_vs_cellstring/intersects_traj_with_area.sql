@@ -66,7 +66,7 @@ SELECT
     traj.trajectory_id,
     traj.mmsi
 FROM
-    prototype1.trajectory_cs AS traj,
+    prototype2.trajectory_cs AS traj,
     benchmark.area_cs as area
 WHERE
     area.area_id = 1
