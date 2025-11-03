@@ -1,0 +1,16 @@
+import psycopg
+import sys
+import os
+
+
+def connect_to_db() -> psycopg.Connection:
+    db_url = os.getenv('DATABASE_URL')
+
+    if not db_url:
+        sys.exit("DATABASE_URL not defined in .env file")
+
+    conn = psycopg.connect(db_url)
+    # Ensure DISCARD ALL is allowed and prevent psycopg3 from using prepared statements.
+    conn.autocommit = True
+    conn.prepare_threshold = None  # disable server-side prepared statements
+    return conn
