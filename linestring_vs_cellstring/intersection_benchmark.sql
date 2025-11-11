@@ -17,12 +17,12 @@ EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     traj.trajectory_id,
     area.area_id,
-    CST_Intersection(traj.cellstring, area.cellstring) AS intersection
+    CST_Intersection(traj.cellstring_z21, area.cellstring_z21) AS intersection
 FROM
     prototype2.trajectory_cs AS traj,
     benchmark.area_cs AS area
 WHERE area.area_id = 2
-    AND CST_Intersects(traj.cellstring, area.cellstring);
+    AND CST_Intersects(traj.cellstring_z21, area.cellstring_z21);
 
 -- INTERSECTION OF 2 TRAJECTORIES AS LINESTRING VS CELLSTRING
 

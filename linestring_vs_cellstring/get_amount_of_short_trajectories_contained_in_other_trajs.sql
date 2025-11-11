@@ -10,8 +10,8 @@ FROM
 JOIN prototype2.trajectory_cs AS traj_b
     ON traj_a.mmsi = traj_b.mmsi
     AND traj_a.trajectory_id <> traj_b.trajectory_id
-WHERE cardinality(traj_b.cellstring) < 3
-    AND CST_Contains(traj_a.cellstring, traj_b.cellstring)
+WHERE cardinality(traj_b.cellstring_z21) < 3
+    AND CST_Contains(traj_a.cellstring_z21, traj_b.cellstring_z21)
 GROUP BY traj_a.trajectory_id
 ORDER BY duplicate_count DESC;
 

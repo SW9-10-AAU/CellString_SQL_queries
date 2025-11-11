@@ -33,5 +33,5 @@ WHERE stopA.stop_id <> stopB.stop_id
   AND stopA.mmsi <> stopB.mmsi
   AND stopA.ts_start < stopB.ts_end
   AND stopB.ts_start < stopA.ts_end
-  AND CST_Intersects(stopA.cellstring, stopB.cellstring)
+  AND CST_Intersects(stopA.cellstring_z21, stopB.cellstring_z21)
 ORDER BY overlap_duration DESC;

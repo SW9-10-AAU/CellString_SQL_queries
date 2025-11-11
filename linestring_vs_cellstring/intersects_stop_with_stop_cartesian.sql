@@ -20,4 +20,4 @@ FROM
     prototype2.stop_cs AS stopB
 WHERE stopA.stop_id <> stopB.stop_id
     AND stopA.mmsi <> stopB.mmsi
-    AND CST_Intersects(stopA.cellstring, stopB.cellstring);
+    AND CST_Intersects(stopA.cellstring_z21, stopB.cellstring_z21);
