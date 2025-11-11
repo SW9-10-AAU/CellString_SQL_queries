@@ -4,10 +4,10 @@ ST_SQL = """
 SELECT DISTINCT
     trajB.trajectory_id
 FROM
-    prototype1.trajectory_ls AS trajA,
-    prototype1.trajectory_ls AS trajB
+    prototype2.trajectory_ls AS trajA,
+    prototype2.trajectory_ls AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
-    AND trajA.trajectory_id = 9133
+    AND trajA.trajectory_id = 31889
     AND ST_Intersects(trajA.geom, trajB.geom);
 """
 
@@ -18,8 +18,8 @@ FROM
     prototype2.trajectory_cs AS trajA,
     prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
-    AND trajA.trajectory_id = 9133
-    AND CST_Intersects(trajA.cellstring, trajB.cellstring);
+    AND trajA.trajectory_id = 31889
+    AND CST_Intersects(trajA.cellstring_z21, trajB.cellstring_z21);
 """
 
 # Example shared parameter for both queries (e.g., a WKT polygon).
@@ -28,7 +28,7 @@ PARAMS = (
 )
 
 BENCHMARK = Benchmark(
-    name="Intersects long trajectory vs small MBR",
+    name="Intersects long trajectory (small MBR)",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
     params=PARAMS,

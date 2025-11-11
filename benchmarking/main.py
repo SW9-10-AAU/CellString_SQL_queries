@@ -2,7 +2,6 @@ import os
 import sys
 from dotenv import load_dotenv
 from benchmarking.connect import connect_to_db
-
 from benchmarking.core import run_benchmark, print_result
 from benchmarking.benchmarks import REGISTRY
 
@@ -15,6 +14,7 @@ def main():
     conn = connect_to_db()
     try:
         for benchmark in REGISTRY:
+            print(f"Running benchmark:", benchmark.name)
             result = run_benchmark(conn, benchmark)
             print_result(result)
     finally:
