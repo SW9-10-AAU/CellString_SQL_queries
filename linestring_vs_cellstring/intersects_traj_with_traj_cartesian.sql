@@ -5,8 +5,8 @@ SELECT
     trajA.trajectory_id,
     trajB.trajectory_id
 FROM
-    prototype1.trajectory_ls AS trajA,
-    prototype1.trajectory_ls AS trajB
+    prototype2.trajectory_ls AS trajA,
+    prototype2.trajectory_ls AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.mmsi <> trajB.mmsi
     AND ST_Intersects(trajA.geom, trajB.geom);
@@ -16,8 +16,8 @@ SELECT
     trajA.trajectory_id,
     trajB.trajectory_id
 FROM
-    prototype1.trajectory_cs AS trajA,
-    prototype1.trajectory_cs AS trajB
+    prototype2.trajectory_cs AS trajA,
+    prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.mmsi <> trajB.mmsi
     AND CST_Intersects(trajA.cellstring, trajB.cellstring);

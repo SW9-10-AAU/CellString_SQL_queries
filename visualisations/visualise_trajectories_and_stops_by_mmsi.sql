@@ -15,7 +15,7 @@ trajectory AS (
         geom,
         ts_start,
         ts_end
-    FROM prototype1.trajectory_ls, vars
+    FROM prototype2.trajectory_ls, vars
     WHERE mmsi = ANY(vars.mmsis)
 ),
 stop AS (
@@ -27,7 +27,7 @@ stop AS (
         geom,
         ts_start,
         ts_end
-    FROM prototype1.stop_poly, vars
+    FROM prototype2.stop_poly, vars
     WHERE mmsi = ANY(vars.mmsis)
 )
 SELECT * FROM trajectory
@@ -50,7 +50,7 @@ trajectory AS (
         cellstring,
         ts_start,
         ts_end
-    FROM prototype1.trajectory_cs, vars
+    FROM prototype2.trajectory_cs, vars
     WHERE mmsi = ANY(vars.mmsis)
 ),
 stop AS (
@@ -62,7 +62,7 @@ stop AS (
         cellstring,
         ts_start,
         ts_end
-    FROM prototype1.stop_cs, vars
+    FROM prototype2.stop_cs, vars
     WHERE mmsi = ANY(vars.mmsis)
 )
 SELECT * FROM trajectory

@@ -7,7 +7,7 @@ SELECT
     area.area_id,
     ST_Intersection(traj.geom, area.geom) AS intersection
 FROM
-    prototype1.trajectory_ls AS traj,
+    prototype2.trajectory_ls AS traj,
     benchmark.area_poly AS area
 WHERE area.area_id = 2
     AND ST_Intersects(traj.geom, area.geom);
@@ -19,7 +19,7 @@ SELECT
     area.area_id,
     CST_Intersection(traj.cellstring, area.cellstring) AS intersection
 FROM
-    prototype1.trajectory_cs AS traj,
+    prototype2.trajectory_cs AS traj,
     benchmark.area_cs AS area
 WHERE area.area_id = 2
     AND CST_Intersects(traj.cellstring, area.cellstring);
@@ -31,16 +31,16 @@ WHERE area.area_id = 2
 EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     ST_Intersection(
-        (SELECT geom FROM prototype1.trajectory_ls WHERE trajectory_id = 366),
-        (SELECT geom FROM prototype1.trajectory_ls WHERE trajectory_id = 453)
+        (SELECT geom FROM prototype2.trajectory_ls WHERE trajectory_id = 366),
+        (SELECT geom FROM prototype2.trajectory_ls WHERE trajectory_id = 453)
     ) AS intersection_linestring;
 
 -- cst_ version (~246ms)
 EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     CST_Intersection(
-        (SELECT cellstring FROM prototype1.trajectory_cs WHERE trajectory_id = 366),
-        (SELECT cellstring FROM prototype1.trajectory_cs WHERE trajectory_id = 453)
+        (SELECT cellstring FROM prototype2.trajectory_cs WHERE trajectory_id = 366),
+        (SELECT cellstring FROM prototype2.trajectory_cs WHERE trajectory_id = 453)
     ) AS intersection_cellstring;
 
 -- 1000 points trajectory_ids: 4727 and 91737
@@ -48,16 +48,16 @@ SELECT
 EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     ST_Intersection(
-        (SELECT geom FROM prototype1.trajectory_ls WHERE trajectory_id = 4727),
-        (SELECT geom FROM prototype1.trajectory_ls WHERE trajectory_id = 91737)
+        (SELECT geom FROM prototype2.trajectory_ls WHERE trajectory_id = 4727),
+        (SELECT geom FROM prototype2.trajectory_ls WHERE trajectory_id = 91737)
     ) AS intersection_linestring;
 
 -- cst_ version (~1935ms)
 EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     CST_Intersection(
-        (SELECT cellstring FROM prototype1.trajectory_cs WHERE trajectory_id = 4727),
-        (SELECT cellstring FROM prototype1.trajectory_cs WHERE trajectory_id = 91737)
+        (SELECT cellstring FROM prototype2.trajectory_cs WHERE trajectory_id = 4727),
+        (SELECT cellstring FROM prototype2.trajectory_cs WHERE trajectory_id = 91737)
     ) AS intersection_cellstring;
 
 -- 10000 points trajectory_ids: 10648 and 57048
@@ -65,14 +65,14 @@ SELECT
 EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     ST_Intersection(
-        (SELECT geom FROM prototype1.trajectory_ls WHERE trajectory_id = 10648),
-        (SELECT geom FROM prototype1.trajectory_ls WHERE trajectory_id = 57048)
+        (SELECT geom FROM prototype2.trajectory_ls WHERE trajectory_id = 10648),
+        (SELECT geom FROM prototype2.trajectory_ls WHERE trajectory_id = 57048)
     ) AS intersection_linestring;
 
 -- cst_ version (~5580ms)
 EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT
     CST_Intersection(
-        (SELECT cellstring FROM prototype1.trajectory_cs WHERE trajectory_id = 10648),
-        (SELECT cellstring FROM prototype1.trajectory_cs WHERE trajectory_id = 57048)
+        (SELECT cellstring FROM prototype2.trajectory_cs WHERE trajectory_id = 10648),
+        (SELECT cellstring FROM prototype2.trajectory_cs WHERE trajectory_id = 57048)
     ) AS intersection_cellstring;

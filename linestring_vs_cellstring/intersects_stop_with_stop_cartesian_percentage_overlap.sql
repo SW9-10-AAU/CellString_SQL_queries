@@ -9,8 +9,8 @@ SELECT
         2
     ) AS overlap_percent
 FROM
-    prototype1.stop_poly AS stopA,
-    prototype1.stop_poly AS stopB
+    prototype2.stop_poly AS stopA,
+    prototype2.stop_poly AS stopB
 WHERE
     stopA.stop_id <> stopB.stop_id
     AND stopA.mmsi <> stopB.mmsi
@@ -27,8 +27,8 @@ SELECT
         2
     ) AS overlap_percent
 FROM
-    prototype1.stop_cs AS stopA,
-    prototype1.stop_cs AS stopB
+    prototype2.stop_cs AS stopA,
+    prototype2.stop_cs AS stopB
 WHERE
     stopA.stop_id <> stopB.stop_id
     AND stopA.mmsi <> stopB.mmsi

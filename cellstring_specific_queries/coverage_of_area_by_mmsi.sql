@@ -4,19 +4,19 @@
 -- Helsingør-Helsingborg (23s)
 -- Læsø (????)
 WITH area AS (
-    SELECT cellstring
+    SELECT cellstring_z21
     FROM benchmark.area_cs
-    WHERE area_id = 1
+    WHERE area_id = 3
 ),
 traj_cover AS (
     SELECT
         traj.mmsi,
-        CST_Intersection(traj.cellstring, area.cellstring) AS covered_cells
+        CST_Intersection(traj.cellstring_z21, area.cellstring_z21) AS covered_cells
     FROM
-        prototype1.trajectory_cs AS traj,
+        prototype2.trajectory_cs AS traj,
         area
     WHERE
-        CST_Intersects(traj.cellstring, area.cellstring)
+        CST_Intersects(traj.cellstring_z21, area.cellstring_z21)
 ),
 mmsi_union AS (
     SELECT
@@ -28,6 +28,6 @@ mmsi_union AS (
 )
 SELECT
     mmsi,
-    ROUND((cell_count::numeric / cardinality(area.cellstring)) * 100, 2) AS coverage_percent
+    ROUND((cell_count::numeric / cardinality(area.cellstring_z21)) * 100, 2) AS coverage_percent
 FROM mmsi_union, area
 ORDER BY coverage_percent DESC;
