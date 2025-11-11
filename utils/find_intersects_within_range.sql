@@ -1,6 +1,6 @@
 WITH filtered AS (
   SELECT trajectory_id, geom
-  FROM prototype1.trajectory_ls
+  FROM prototype2.trajectory_ls
   WHERE ST_NumPoints(geom) BETWEEN 9950 AND 10050
 )
 SELECT DISTINCT a.trajectory_id, b.trajectory_id

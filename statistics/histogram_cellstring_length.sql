@@ -2,7 +2,7 @@
 SELECT
     COALESCE(array_length(cellstring, 1), 0) AS array_length,
     COUNT(*) AS count
-FROM prototype1.trajectory_cs
+FROM prototype2.trajectory_cs
 GROUP BY array_length
 ORDER BY array_length;
 
@@ -13,7 +13,7 @@ SELECT
     ELSE array_length(cellstring,1)
   END AS len,
   COUNT(*)
-FROM prototype1.stop_cs
+FROM prototype2.stop_cs
 GROUP BY len
 ORDER BY len;
 
@@ -27,7 +27,7 @@ SELECT
   floor(array_length(cellstring,1) / s.interval_size) * s.interval_size AS interval_start,
   floor(array_length(cellstring,1) / s.interval_size) * s.interval_size + s.interval_size - 1 AS interval_end,
   COUNT(*) AS count
-FROM prototype1.trajectory_cs, settings s
+FROM prototype2.trajectory_cs, settings s
 WHERE cellstring IS NOT NULL
 GROUP BY interval_start, interval_end
 ORDER BY interval_start;
@@ -41,7 +41,7 @@ SELECT
   floor(array_length(cellstring,1) / s.interval_size) * s.interval_size AS interval_start,
   floor(array_length(cellstring,1) / s.interval_size) * s.interval_size + s.interval_size - 1 AS interval_end,
   COUNT(*) AS count
-FROM prototype1.stop_cs, settings s
+FROM prototype2.stop_cs, settings s
 WHERE cellstring IS NOT NULL
 GROUP BY interval_start, interval_end
 ORDER BY interval_start;

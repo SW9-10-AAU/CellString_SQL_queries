@@ -6,7 +6,7 @@ SELECT
     traj.mmsi,
     traj.geom
 FROM
-    prototype1.trajectory_ls AS traj,
+    prototype2.trajectory_ls AS traj,
     benchmark.area_poly as areaA,
     benchmark.area_poly as areaB
 WHERE areaA.area_id = 2
@@ -20,7 +20,7 @@ SELECT
     traj.mmsi,
     traj.cellstring
 FROM
-    prototype1.trajectory_cs AS traj,
+    prototype2.trajectory_cs AS traj,
     benchmark.area_cs as areaA,
     benchmark.area_cs as areaB
 WHERE areaA.area_id = 2

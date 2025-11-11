@@ -6,8 +6,8 @@ SELECT
     traj_a.trajectory_id,
     COUNT(DISTINCT traj_b.trajectory_id) as duplicate_count
 FROM
-    prototype1.trajectory_cs AS traj_a
-JOIN prototype1.trajectory_cs AS traj_b
+    prototype2.trajectory_cs AS traj_a
+JOIN prototype2.trajectory_cs AS traj_b
     ON traj_a.mmsi = traj_b.mmsi
     AND traj_a.trajectory_id <> traj_b.trajectory_id
 WHERE cardinality(traj_b.cellstring) < 3
@@ -24,8 +24,8 @@ SELECT
     traj_a.trajectory_id,
     COUNT(DISTINCT traj_b.trajectory_id) as duplicate_count
 FROM
-    prototype1.trajectory_ls AS traj_a
-JOIN prototype1.trajectory_ls AS traj_b
+    prototype2.trajectory_ls AS traj_a
+JOIN prototype2.trajectory_ls AS traj_b
     ON traj_a.mmsi = traj_b.mmsi
     AND traj_a.trajectory_id <> traj_b.trajectory_id
 WHERE ST_NumPoints(traj_b.geom) < 3

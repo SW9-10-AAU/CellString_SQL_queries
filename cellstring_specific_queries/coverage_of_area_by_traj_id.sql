@@ -9,7 +9,7 @@ SELECT
         2
     ) AS coverage_percent
 FROM
-    prototype1.trajectory_cs AS traj,
+    prototype2.trajectory_cs AS traj,
     benchmark.area_cs as area
 WHERE
     area.area_id = 3

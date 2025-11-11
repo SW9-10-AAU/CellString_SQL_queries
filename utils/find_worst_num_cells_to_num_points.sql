@@ -11,8 +11,8 @@ SELECT
         )
         ELSE NULL
     END AS points_cells_ratio
-FROM prototype1.trajectory_ls AS traj_ls
-JOIN prototype1.trajectory_cs AS traj_cs
+FROM prototype2.trajectory_ls AS traj_ls
+JOIN prototype2.trajectory_cs AS traj_cs
     ON traj_ls.trajectory_id = traj_cs.trajectory_id
 WHERE ST_NumPoints(traj_ls.geom) > 1000
 ORDER BY points_cells_ratio DESC;

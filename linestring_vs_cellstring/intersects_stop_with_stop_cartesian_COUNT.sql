@@ -5,8 +5,8 @@ SELECT
     stopA.stop_id,
     COUNT(stopB.stop_id) AS intersect_count
 FROM
-    prototype1.stop_poly AS stopA,
-    prototype1.stop_poly AS stopB
+    prototype2.stop_poly AS stopA,
+    prototype2.stop_poly AS stopB
 WHERE stopA.stop_id <> stopB.stop_id
     AND stopA.mmsi <> stopB.mmsi
     AND ST_Intersects(stopA.geom, stopB.geom)
@@ -18,8 +18,8 @@ SELECT
     stopA.stop_id,
     COUNT(stopB.stop_id) AS intersect_count
 FROM
-    prototype1.stop_cs AS stopA,
-    prototype1.stop_cs AS stopB
+    prototype2.stop_cs AS stopA,
+    prototype2.stop_cs AS stopB
 WHERE stopA.stop_id <> stopB.stop_id
     AND stopA.mmsi <> stopB.mmsi
     AND CST_Intersects(stopA.cellstring, stopB.cellstring)
