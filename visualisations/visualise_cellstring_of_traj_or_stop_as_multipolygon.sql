@@ -10,7 +10,7 @@ SELECT
 FROM prototype2.trajectory_ls ls
 JOIN prototype2.trajectory_cs cs
   ON ls.trajectory_id = cs.trajectory_id
-WHERE ls.trajectory_id IN (12);
+WHERE ls.trajectory_id IN (20521);
 
 
 -- Stop
