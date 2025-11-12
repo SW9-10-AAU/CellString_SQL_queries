@@ -46,15 +46,16 @@ WHERE
    area.area_id = 3
    AND ST_Intersects(traj.geom, area.geom);
 
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON)
 SELECT
    traj.trajectory_id
 FROM
    prototype2.trajectory_cs AS traj,
-   benchmark.area_cs as area
+   benchmark.area_cs AS area
 WHERE
    area.area_id = 3
-   AND traj.cellstring_z13 && area.cellstring_z13
-   AND traj.cellstring_z21 && area.cellstring_z21;
+   AND traj.cellstring_z13 && area.cellstring_z13;
+--    AND traj.cellstring_z21 && area.cellstring_z21;
 
 
 -- Trajectories der krydser et langt trajectory
@@ -67,6 +68,7 @@ WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.trajectory_id = 28749
     AND ST_Intersects(trajA.geom, trajB.geom);
 
+EXPLAIN (ANALYZE, BUFFERS, VERBOSE, FORMAT JSON)
 SELECT DISTINCT
    trajB.trajectory_id
 FROM
@@ -74,5 +76,5 @@ FROM
    prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
    AND trajA.trajectory_id = 28749
---    AND trajA.cellstring_z13 && trajB.cellstring_z13
+--    AND trajA.cellstring_z13 && trajB.cellstring_z13;
    AND trajA.cellstring_z21 && trajB.cellstring_z21;

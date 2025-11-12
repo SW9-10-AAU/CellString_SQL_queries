@@ -25,6 +25,6 @@ FROM
     benchmark.area_cs as areaB
 WHERE areaA.area_id = 2
     AND areaB.area_id = 3
-    AND CST_Intersects(traj.cellstring_z21, areaA.cellstring_z21)
-    AND CST_Intersects(traj.cellstring_z21, areaB.cellstring_z21);
+    AND CST_Intersects(traj.cellstring_z13, areaA.cellstring_z13)
+    AND CST_Intersects(traj.cellstring_z13, areaB.cellstring_z13);
 
