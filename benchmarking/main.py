@@ -1,6 +1,7 @@
 import os
 import sys
 from dotenv import load_dotenv
+from statistics import median
 from benchmarking.connect import connect_to_db
 from benchmarking.core import run_benchmark, print_result
 from benchmarking.benchmarks import REGISTRY
@@ -13,10 +14,27 @@ def main():
 
     conn = connect_to_db()
     try:
+        trajectory_ids = []
+        cellstring_lengths = []
+        with conn.cursor() as cur:
+            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 50")
+            trajectory_ids = [row[0] for row in cur.fetchall()]
+
+            if trajectory_ids:
+                cur.execute("SELECT cardinality(cellstring_z21) FROM prototype2.trajectory_cs WHERE trajectory_id = ANY(%s)", (trajectory_ids,))
+                cellstring_lengths = [row[0] for row in cur.fetchall()]
+
         for benchmark in REGISTRY:
             print(f"Running benchmark:", benchmark.name)
-            result = run_benchmark(conn, benchmark)
+            result = run_benchmark(conn, benchmark, trajectory_ids)
             print_result(result)
+
+        if cellstring_lengths:
+            print("\n--- Random trajectory Statistics ---")
+            print(f"Min: {min(cellstring_lengths)}")
+            print(f"Median: {median(cellstring_lengths)}")
+            print(f"Max: {max(cellstring_lengths)}")
+
     finally:
         conn.close()
 

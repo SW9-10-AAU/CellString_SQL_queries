@@ -14,6 +14,7 @@ class Benchmark:
     cst_sql: str
     params: Tuple[Any, ...] = tuple()
     repeats: int = 5
+    per_trajectory: bool = False
 
 
 @dataclass
@@ -67,34 +68,61 @@ def _keyset(rows: Iterable[Tuple]) -> set:
     return set(r[0] for r in rows)
 
 
-def _run_one_side(cur, label: str, sql: str, params: Sequence[Any], repeats: int) -> RunOutcome:
+def _run_one_side(cur, label: str, sql: str, params: Sequence[Any], trajectory_ids: List[int]) -> RunOutcome:
+    if trajectory_ids:
+        _warmup(cur, sql, (trajectory_ids[0],) + params)
+
+    exec_times: List[float] = []
+    wall_times: List[float] = []
+    all_rows: List[Tuple] = []
+
+    for trajectory_id in trajectory_ids:
+        current_params = (trajectory_id,) + params
+        _, exec_ms = _explain_analyze_ms(cur, sql, current_params)
+        rows, wall_ms = _fetch_all_with_wall_ms(cur, sql, current_params)
+        exec_times.append(exec_ms)
+        wall_times.append(wall_ms)
+        all_rows.extend(rows)
+
+    return RunOutcome(
+        exec_ms_med=round(median(exec_times), 3) if exec_times else 0.0,
+        wall_ms_med=round(median(wall_times), 3) if wall_times else 0.0,
+        rows=all_rows,
+    )
+
+
+def _run_one_side_repeated(cur, label: str, sql: str, params: Sequence[Any], repeats: int) -> RunOutcome:
     _warmup(cur, sql, params)
 
     exec_times: List[float] = []
     wall_times: List[float] = []
-    last_rows: List[Tuple] = []
 
-    for _ in range(repeats):
+    for i in range(repeats):
         _, exec_ms = _explain_analyze_ms(cur, sql, params)
-        rows, wall_ms = _fetch_all_with_wall_ms(cur, sql, params)
         exec_times.append(exec_ms)
-        wall_times.append(wall_ms)
-        last_rows = rows
+        # Only run the last one for wall time and row count
+        if i == repeats - 1:
+            rows, wall_ms = _fetch_all_with_wall_ms(cur, sql, params)
+            wall_times.append(wall_ms)
 
     return RunOutcome(
-        exec_ms_med=round(median(exec_times), 3),
-        wall_ms_med=round(median(wall_times), 3),
-        rows=last_rows,
+        exec_ms_med=round(median(exec_times), 3) if exec_times else 0.0,
+        wall_ms_med=round(median(wall_times), 3) if wall_times else 0.0,
+        rows=rows,
     )
 
 
-def run_benchmark(connection, bench: Benchmark) -> BenchmarkResult:
+def run_benchmark(connection, bench: Benchmark, trajectory_ids: List[int]) -> BenchmarkResult:
     # Ensure consistent session settings on this connection.
     connection.autocommit = True
     connection.prepare_threshold = None  # disable automatic prepares
     with connection.cursor() as cur:
-        st_out = _run_one_side(cur, "ST_", bench.st_sql, bench.params, bench.repeats)
-        cst_out = _run_one_side(cur, "CST_", bench.cst_sql, bench.params, bench.repeats)
+        if bench.per_trajectory:
+            st_out = _run_one_side(cur, "ST_", bench.st_sql, bench.params, trajectory_ids)
+            cst_out = _run_one_side(cur, "CST_", bench.cst_sql, bench.params, trajectory_ids)
+        else:
+            st_out = _run_one_side_repeated(cur, "ST_", bench.st_sql, bench.params, bench.repeats)
+            cst_out = _run_one_side_repeated(cur, "CST_", bench.cst_sql, bench.params, bench.repeats)
 
     st_keys = _keyset(st_out.rows)
     cst_keys = _keyset(cst_out.rows)

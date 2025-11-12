@@ -35,5 +35,6 @@ BENCHMARK = Benchmark(
     cst_sql=CST_SQL,
     params=PARAMS,
     repeats=5,  # adjust if needed
+    per_trajectory=False
 )
 
