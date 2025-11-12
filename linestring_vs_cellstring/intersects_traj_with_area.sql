@@ -20,7 +20,7 @@ FROM
     benchmark.area_cs as area
 WHERE
     area.area_id = 2
-    AND CST_Intersects(traj.cellstring, area.cellstring);
+    AND CST_Intersects(traj.cellstring_z21, area.cellstring_z21);
 
 
 
@@ -44,7 +44,7 @@ FROM
     benchmark.area_cs as area
 WHERE
     area.area_id = 3
-    AND CST_Intersects(traj.cellstring, area.cellstring);
+    AND CST_Intersects(traj.cellstring_z21, area.cellstring_z21);
 
 
 
@@ -70,4 +70,4 @@ FROM
     benchmark.area_cs as area
 WHERE
     area.area_id = 1
-    AND CST_Intersects(traj.cellstring, area.cellstring);
+    AND CST_Intersects(traj.cellstring_z21, area.cellstring_z21);

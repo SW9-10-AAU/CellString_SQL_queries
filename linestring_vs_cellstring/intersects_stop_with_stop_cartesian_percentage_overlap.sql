@@ -22,8 +22,8 @@ SELECT
     stopA.stop_id,
     stopB.stop_id,
     ROUND(
-        (cardinality(CST_Intersection(stopA.cellstring, stopB.cellstring))::numeric
-         / cardinality(stopA.cellstring)) * 100,
+        (cardinality(CST_Intersection(stopA.cellstring_z21, stopB.cellstring_z21))::numeric
+         / cardinality(stopA.cellstring_z21)) * 100,
         2
     ) AS overlap_percent
 FROM
@@ -32,5 +32,5 @@ FROM
 WHERE
     stopA.stop_id <> stopB.stop_id
     AND stopA.mmsi <> stopB.mmsi
-    AND CST_Intersects(stopA.cellstring, stopB.cellstring)
+    AND CST_Intersects(stopA.cellstring_z21, stopB.cellstring_z21)
 ORDER BY overlap_percent DESC;

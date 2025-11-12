@@ -1,8 +1,12 @@
 -- Longest trajectory (trajectory_id = 9133) consists of 76,822 points / 348,230 cells
 -- mmsi 219000429 (Rødby-Putgarden ferry)
 SELECT *
+FROM prototype1.trajectory_ls
+WHERE trajectory_id = 9133; -- Rødby-Putgarden ferry
+
+SELECT *
 FROM prototype2.trajectory_ls
-WHERE trajectory_id = 9133;
+WHERE trajectory_id = 31889; -- Helsingør-Helsingborg ferry
 
 --- ST_ version (~1s) = 763 trajectories ---
 EXPLAIN (ANALYZE, COSTS, BUFFERS)
@@ -12,7 +16,7 @@ FROM
     prototype2.trajectory_ls AS trajA,
     prototype2.trajectory_ls AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
-    AND trajA.trajectory_id = 9133
+    AND trajA.trajectory_id = 31889
     AND ST_Intersects(trajA.geom, trajB.geom);
 
 --- Prototype 1 CellString version (~1m 7s) = 767 trajectories ---
@@ -20,8 +24,8 @@ EXPLAIN (ANALYZE, COSTS, BUFFERS)
 SELECT DISTINCT
     trajB.trajectory_id
 FROM
-    prototype2.trajectory_cs AS trajA,
-    prototype2.trajectory_cs AS trajB
+    prototype1.trajectory_cs AS trajA,
+    prototype1.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.trajectory_id = 9133
     AND CST_Intersects(trajA.cellstring, trajB.cellstring);
@@ -34,5 +38,5 @@ FROM
     prototype2.trajectory_cs AS trajA,
     prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
-    AND trajA.trajectory_id = 9133
-    AND CST_Intersects(trajA.cellstring, trajB.cellstring);
+    AND trajA.trajectory_id = 31889
+    AND CST_Intersects(trajA.cellstring_z21, trajB.cellstring_z21);

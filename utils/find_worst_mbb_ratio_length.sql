@@ -9,4 +9,4 @@ SELECT
     END AS mbr_length_ratio
 FROM prototype2.trajectory_ls
 WHERE ST_Length(ST_Transform(geom, 3857)) > 0
-ORDER BY mbr_length_ratio DESC;
+ORDER BY traj_length DESC;

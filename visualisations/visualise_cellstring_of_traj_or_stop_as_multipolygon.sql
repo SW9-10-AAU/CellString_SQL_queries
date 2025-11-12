@@ -6,7 +6,7 @@ SELECT
     ls.trajectory_id,
     ls.mmsi,
     ls.geom AS trajectory_geom,
-    ls_experiment.cellids_to_polygons(cs.cellstring) AS trajectory_cells
+    ls_experiment.cellids_to_polygons(cs.cellstring_z21) AS trajectory_cells
 FROM prototype2.trajectory_ls ls
 JOIN prototype2.trajectory_cs cs
   ON ls.trajectory_id = cs.trajectory_id
@@ -18,7 +18,7 @@ SELECT
     ls.stop_id,
     ls.mmsi,
     ls.geom AS stop_geom,
-    ls_experiment.cellids_to_polygons(cs.cellstring) AS stop_cells
+    ls_experiment.cellids_to_polygons(cs.cellstring_z21) AS stop_cells
 FROM prototype2.stop_poly ls
 JOIN prototype2.stop_cs cs
   ON ls.stop_id = cs.stop_id

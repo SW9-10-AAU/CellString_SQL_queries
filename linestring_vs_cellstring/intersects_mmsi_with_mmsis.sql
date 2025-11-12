@@ -19,4 +19,4 @@ FROM
     prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.mmsi = 219000873
-    AND CST_Intersects(trajA.cellstring, trajB.cellstring);
+    AND CST_Intersects(trajA.cellstring_z21, trajB.cellstring_z21);

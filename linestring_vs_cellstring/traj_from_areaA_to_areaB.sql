@@ -18,13 +18,13 @@ WHERE areaA.area_id = 2
 SELECT
     traj.trajectory_id,
     traj.mmsi,
-    traj.cellstring
+    traj.cellstring_z21
 FROM
     prototype2.trajectory_cs AS traj,
     benchmark.area_cs as areaA,
     benchmark.area_cs as areaB
 WHERE areaA.area_id = 2
     AND areaB.area_id = 3
-    AND CST_Intersects(traj.cellstring, areaA.cellstring)
-    AND CST_Intersects(traj.cellstring, areaB.cellstring);
+    AND CST_Intersects(traj.cellstring_z13, areaA.cellstring_z13)
+    AND CST_Intersects(traj.cellstring_z13, areaB.cellstring_z13);
 

@@ -6,7 +6,7 @@ SELECT
     area.area_id,
     ST_Intersection(traj.geom, area.geom) AS intersection
 FROM
-    prototype1.trajectory_ls AS traj,
+    prototype2.trajectory_ls AS traj,
     benchmark.area_poly AS area
 WHERE area.area_id = 2
     AND ST_Intersects(traj.geom, area.geom);
@@ -16,12 +16,12 @@ CST_SQL = """
 SELECT
     traj.trajectory_id,
     area.area_id,
-    CST_Intersection(traj.cellstring, area.cellstring) AS intersection
+    CST_Intersection(traj.cellstring_z21, area.cellstring_z21) AS intersection
 FROM
-    prototype1.trajectory_cs AS traj,
+    prototype2.trajectory_cs AS traj,
     benchmark.area_cs AS area
 WHERE area.area_id = 2
-    AND CST_Intersects(traj.cellstring, area.cellstring);
+    AND CST_Intersects(traj.cellstring_z21, area.cellstring_z21);
 """
 
 # Example shared parameter for both queries (e.g., a WKT polygon).
