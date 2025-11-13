@@ -1,9 +1,9 @@
-from .intersection_benchmark import BENCHMARK as intersection
-from .intersects_long_traj_small_mbr import BENCHMARK as intersects_long_traj_small_mbr
-from .intersects_long_traj_large_mbr import BENCHMARK as intersects_long_traj_large_mbr
+from .intersection_benchmark import BENCHMARK as intersection_benchmark
+from .intersects_benchmark import BENCHMARK as intersects_benchmark
+from .hausdorff_distance_benchmark import BENCHMARK as hausdorff_distance_benchmark
 
-REGISTRY = [
-    intersection,
-    intersects_long_traj_small_mbr,
-    intersects_long_traj_large_mbr,
+RUN_PLAN = [
+    intersects_benchmark,
+    intersection_benchmark,
+    hausdorff_distance_benchmark,
 ]
