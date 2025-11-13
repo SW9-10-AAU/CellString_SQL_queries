@@ -8,13 +8,20 @@ from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 
 @dataclass(frozen=True)
-class Benchmark:
+class TimeBenchmark:
     name: str
     st_sql: str
     cst_sql: str
     params: Tuple[Any, ...] = tuple()
     repeats: int = 5
     with_trajectory_ids: bool = False
+    zoom_levels: List[str] = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class ValueBenchmark:
+    name: str
+    sql: str
     zoom_levels: List[str] = field(default_factory=list)
 
 
@@ -26,12 +33,18 @@ class RunOutcome:
 
 
 @dataclass
-class BenchmarkResult:
+class TimeBenchmarkResult:
     name: str
     st: RunOutcome
     cst_results: Dict[str,RunOutcome]
     false_positives: Dict[str, int]
     false_negatives: Dict[str, int]
+
+
+@dataclass
+class ValueBenchmarkResult:
+    name: str
+    median_values: Dict[str, float]
 
 
 def _discard_and_set(cur) -> None:
@@ -113,7 +126,7 @@ def _execute_queries_repeated(cur, label: str, sql: str, params: Sequence[Any], 
     )
 
 
-def run_benchmark(connection, bench: Benchmark, trajectory_ids: List[int]) -> BenchmarkResult:
+def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[int]) -> TimeBenchmarkResult:
     connection.autocommit = True
     connection.prepare_threshold = None
     with connection.cursor() as cur:
@@ -126,9 +139,12 @@ def run_benchmark(connection, bench: Benchmark, trajectory_ids: List[int]) -> Be
         else:
             st_out = _execute_queries_repeated(cur, "ST_", bench.st_sql, bench.params, bench.repeats)
             cst_results = {}
-            for zoom in bench.zoom_levels:
-                sql = bench.cst_sql.format(zoom=zoom)
-                cst_results[zoom] = _execute_queries_repeated(cur, f"CST_{zoom}", sql, bench.params, bench.repeats)
+            if bench.zoom_levels:
+                for zoom in bench.zoom_levels:
+                    sql = bench.cst_sql.format(zoom=zoom)
+                    cst_results[zoom] = _execute_queries_repeated(cur, f"CST_{zoom}", sql, bench.params, bench.repeats)
+            else:
+                cst_results[""] = _execute_queries_repeated(cur, "CST_", bench.cst_sql, bench.params, bench.repeats)
 
     st_keys = _keyset(st_out.rows)
     false_positives = {}
@@ -138,7 +154,7 @@ def run_benchmark(connection, bench: Benchmark, trajectory_ids: List[int]) -> Be
         false_positives[zoom] = len(cst_keys - st_keys)
         false_negatives[zoom] = len(st_keys - cst_keys)
 
-    return BenchmarkResult(
+    return TimeBenchmarkResult(
         name=bench.name,
         st=st_out,
         cst_results=cst_results,
@@ -147,12 +163,43 @@ def run_benchmark(connection, bench: Benchmark, trajectory_ids: List[int]) -> Be
     )
 
 
-def print_result(result: BenchmarkResult) -> None:
+def run_value_benchmark(connection, bench: ValueBenchmark, trajectory_ids: List[int]) -> ValueBenchmarkResult:
+    connection.autocommit = True
+    connection.prepare_threshold = None
+    median_values = {}
+    with connection.cursor() as cur:
+        for zoom in bench.zoom_levels:
+            zoom_level_int = int(zoom.replace('z', ''))
+            sql = bench.sql.format(zoom=zoom, zoom_level=zoom_level_int)
+            values = []
+            for trajectory_id in trajectory_ids:
+                cur.execute(sql, (trajectory_id,))
+                row = cur.fetchone()
+                if row and row[0] is not None:
+                    values.append(row[0])
+            if values:
+                median_values[zoom] = median(values)
+
+    return ValueBenchmarkResult(name=bench.name, median_values=median_values)
+
+
+def print_time_result(result: TimeBenchmarkResult) -> None:
     print(f"\n--- {result.name} ---")
     print(f"ST_:  exec_ms(median)={result.st.exec_ms_med},  wall_ms(median)={result.st.wall_ms_med}")
     print("----------------------------")
     for zoom, cst_out in result.cst_results.items():
-        print(f"CST_{zoom}: exec_ms(median)={cst_out.exec_ms_med}, wall_ms(median)={cst_out.wall_ms_med}")
-        print(f"False positives (CST_{zoom} \\ ST_): {result.false_positives[zoom]}")
-        print(f"False negatives (ST_ \\ CST_{zoom}): {result.false_negatives[zoom]}")
-        print("----------------------------\n")
+        zoom_label = f"CST_{zoom}" if zoom else "CST_"
+        print(f"{zoom_label}: exec_ms(median)={cst_out.exec_ms_med}, wall_ms(median)={cst_out.wall_ms_med}")
+        fp_key = zoom if zoom else ""
+        fn_key = zoom if zoom else ""
+        print(f"False positives ({zoom_label} \\ ST_): {result.false_positives[fp_key]}")
+        print(f"False negatives (ST_ \\ {zoom_label}): {result.false_negatives[fn_key]}")
+        print("----------------------------")
+
+
+def print_value_result(result: ValueBenchmarkResult) -> None:
+    print(f"\n--- {result.name} ---")
+    for zoom, value in result.median_values.items():
+        zoom_label = f"Zoom {zoom}" if zoom else "No zoom"
+        print(f"{zoom_label}: median value = {value:.10f}")
+    print("----------------------------")

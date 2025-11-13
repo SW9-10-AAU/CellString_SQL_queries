@@ -3,8 +3,8 @@ import sys
 from dotenv import load_dotenv
 from statistics import median
 from benchmarking.connect import connect_to_db
-from benchmarking.core import run_benchmark, print_result
-from benchmarking.benchmarks import REGISTRY
+from benchmarking.core import run_time_benchmark, print_time_result, TimeBenchmark, ValueBenchmark, run_value_benchmark, print_value_result
+from benchmarking.benchmarks import RUN_PLAN
 
 def main():
     load_dotenv()
@@ -17,20 +17,24 @@ def main():
         trajectory_ids = []
         cellstring_lengths = []
         with conn.cursor() as cur:
-            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 400")
+            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 200")
             trajectory_ids = [row[0] for row in cur.fetchall()]
 
             if trajectory_ids:
                 cur.execute("SELECT cardinality(cellstring_z21) FROM prototype2.trajectory_cs WHERE trajectory_id = ANY(%s)", (trajectory_ids,))
                 cellstring_lengths = [row[0] for row in cur.fetchall() if row[0] is not None]
 
-        for benchmark in REGISTRY:
-            print(f"Running benchmark:", benchmark.name)
-            result = run_benchmark(conn, benchmark, trajectory_ids)
-            print_result(result)
+        for benchmark in RUN_PLAN:
+            print(f"\nRunning benchmark:", benchmark.name)
+            if isinstance(benchmark, TimeBenchmark):
+                result = run_time_benchmark(conn, benchmark, trajectory_ids)
+                print_time_result(result)
+            elif isinstance(benchmark, ValueBenchmark):
+                result = run_value_benchmark(conn, benchmark, trajectory_ids)
+                print_value_result(result)
 
         if cellstring_lengths:
-            print("\n--- Random LineString trajectory statistics ---")
+            print("\n--- Random CellString_z21 trajectory statistics ---")
             print(f"Min length: {min(cellstring_lengths)}")
             print(f"Median length: {median(cellstring_lengths)}")
             print(f"Max length: {max(cellstring_lengths)}")

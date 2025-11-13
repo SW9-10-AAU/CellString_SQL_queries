@@ -1,4 +1,4 @@
-from benchmarking.core import Benchmark
+from benchmarking.core import TimeBenchmark
 
 ST_SQL = """
 SELECT
@@ -25,7 +25,7 @@ WHERE area.area_id = 2
 """
 
 
-BENCHMARK = Benchmark(
+BENCHMARK = TimeBenchmark(
     name="Find intersecting trajectories in an area",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,

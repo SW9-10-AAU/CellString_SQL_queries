@@ -1,4 +1,4 @@
-from benchmarking.core import Benchmark
+from benchmarking.core import TimeBenchmark
 
 ST_SQL = """
 SELECT DISTINCT
@@ -22,7 +22,7 @@ WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.cellstring_{zoom} && trajB.cellstring_{zoom};
 """
 
-BENCHMARK = Benchmark(
+BENCHMARK = TimeBenchmark(
     name="Intersects benchmark",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
