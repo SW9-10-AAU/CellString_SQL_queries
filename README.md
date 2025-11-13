@@ -20,25 +20,28 @@ Run the benchmark script with: `python -m benchmarking.main`
 
 
 
-### Sample Output
+#### Sample Output
 ```
---- Intersects example (traj vs area) ---
-ST_:  exec_ms(median)=3032.097,  wall_ms(median)=3253.078
-CST_: exec_ms(median)=314.558, wall_ms(median)=330.012
-False positives (CST_ \ ST_): 0
-False negatives (ST_ \ CST_): 0
+--- Intersects benchmark ---
+ST_:  exec_ms(median)=1084.367,  wall_ms(median)=1132.21
+----------------------------
+CST_z13: exec_ms(median)=0.451, wall_ms(median)=7.123
+False positives (CST_z13 \ ST_): 11358
+False negatives (ST_ \ CST_z13): 1
+----------------------------
+CST_z17: exec_ms(median)=0.328, wall_ms(median)=4.509
+False positives (CST_z17 \ ST_): 4434
+False negatives (ST_ \ CST_z17): 5
+----------------------------
+CST_z21: exec_ms(median)=0.14, wall_ms(median)=4.131
+False positives (CST_z21 \ ST_): 787
+False negatives (ST_ \ CST_z21): 47
+----------------------------
 
---- Intersects long trajectory (small MBR) ---
-ST_:  exec_ms(median)=1641.33,  wall_ms(median)=1683.403
-CST_: exec_ms(median)=334.837, wall_ms(median)=341.299
-False positives (CST_ \ ST_): 0
-False negatives (ST_ \ CST_): 0
-
---- Intersects long trajectory (large MBR) ---
-ST_:  exec_ms(median)=4106.542,  wall_ms(median)=4168.307
-CST_: exec_ms(median)=2505.811, wall_ms(median)=2521.336
-False positives (CST_ \ ST_): 6
-False negatives (ST_ \ CST_): 128
+--- Random trajectory Statistics ---
+Min: 1
+Median: 10.5
+Max: 98819
 ```
 
 ### Benchmark Summary
