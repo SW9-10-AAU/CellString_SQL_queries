@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import json
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from statistics import median
-from typing import Any, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,8 @@ class Benchmark:
     cst_sql: str
     params: Tuple[Any, ...] = tuple()
     repeats: int = 5
-    per_trajectory: bool = False
+    with_trajectory_ids: bool = False
+    zoom_levels: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -28,9 +29,9 @@ class RunOutcome:
 class BenchmarkResult:
     name: str
     st: RunOutcome
-    cst: RunOutcome
-    false_positives: int
-    false_negatives: int
+    cst_results: Dict[str,RunOutcome]
+    false_positives: Dict[str, int]
+    false_negatives: Dict[str, int]
 
 
 def _discard_and_set(cur) -> None:
@@ -68,7 +69,7 @@ def _keyset(rows: Iterable[Tuple]) -> set:
     return set(r[0] for r in rows)
 
 
-def _run_one_side(cur, label: str, sql: str, params: Sequence[Any], trajectory_ids: List[int]) -> RunOutcome:
+def _execute_queries_with_random_trajectories(cur, label: str, sql: str, params: Sequence[Any], trajectory_ids: List[int]) -> RunOutcome:
     if trajectory_ids:
         _warmup(cur, sql, (trajectory_ids[0],) + params)
 
@@ -91,7 +92,7 @@ def _run_one_side(cur, label: str, sql: str, params: Sequence[Any], trajectory_i
     )
 
 
-def _run_one_side_repeated(cur, label: str, sql: str, params: Sequence[Any], repeats: int) -> RunOutcome:
+def _execute_queries_repeated(cur, label: str, sql: str, params: Sequence[Any], repeats: int) -> RunOutcome:
     _warmup(cur, sql, params)
 
     exec_times: List[float] = []
@@ -113,26 +114,34 @@ def _run_one_side_repeated(cur, label: str, sql: str, params: Sequence[Any], rep
 
 
 def run_benchmark(connection, bench: Benchmark, trajectory_ids: List[int]) -> BenchmarkResult:
-    # Ensure consistent session settings on this connection.
     connection.autocommit = True
-    connection.prepare_threshold = None  # disable automatic prepares
+    connection.prepare_threshold = None
     with connection.cursor() as cur:
-        if bench.per_trajectory:
-            st_out = _run_one_side(cur, "ST_", bench.st_sql, bench.params, trajectory_ids)
-            cst_out = _run_one_side(cur, "CST_", bench.cst_sql, bench.params, trajectory_ids)
+        if bench.with_trajectory_ids:
+            st_out = _execute_queries_with_random_trajectories(cur, "ST_", bench.st_sql, bench.params, trajectory_ids)
+            cst_results = {}
+            for zoom in bench.zoom_levels:
+                sql = bench.cst_sql.format(zoom=zoom)
+                cst_results[zoom] = _execute_queries_with_random_trajectories(cur, f"CST_{zoom}", sql, bench.params, trajectory_ids)
         else:
-            st_out = _run_one_side_repeated(cur, "ST_", bench.st_sql, bench.params, bench.repeats)
-            cst_out = _run_one_side_repeated(cur, "CST_", bench.cst_sql, bench.params, bench.repeats)
+            st_out = _execute_queries_repeated(cur, "ST_", bench.st_sql, bench.params, bench.repeats)
+            cst_results = {}
+            for zoom in bench.zoom_levels:
+                sql = bench.cst_sql.format(zoom=zoom)
+                cst_results[zoom] = _execute_queries_repeated(cur, f"CST_{zoom}", sql, bench.params, bench.repeats)
 
     st_keys = _keyset(st_out.rows)
-    cst_keys = _keyset(cst_out.rows)
-    false_positives = len(cst_keys - st_keys)
-    false_negatives = len(st_keys - cst_keys)
+    false_positives = {}
+    false_negatives = {}
+    for zoom, cst_out in cst_results.items():
+        cst_keys = _keyset(cst_out.rows)
+        false_positives[zoom] = len(cst_keys - st_keys)
+        false_negatives[zoom] = len(st_keys - cst_keys)
 
     return BenchmarkResult(
         name=bench.name,
         st=st_out,
-        cst=cst_out,
+        cst_results=cst_results,
         false_positives=false_positives,
         false_negatives=false_negatives,
     )
@@ -141,6 +150,9 @@ def run_benchmark(connection, bench: Benchmark, trajectory_ids: List[int]) -> Be
 def print_result(result: BenchmarkResult) -> None:
     print(f"\n--- {result.name} ---")
     print(f"ST_:  exec_ms(median)={result.st.exec_ms_med},  wall_ms(median)={result.st.wall_ms_med}")
-    print(f"CST_: exec_ms(median)={result.cst.exec_ms_med}, wall_ms(median)={result.cst.wall_ms_med}")
-    print(f"False positives (CST_ \\ ST_): {result.false_positives}")
-    print(f"False negatives (ST_ \\ CST_): {result.false_negatives}")
+    print("----------------------------")
+    for zoom, cst_out in result.cst_results.items():
+        print(f"CST_{zoom}: exec_ms(median)={cst_out.exec_ms_med}, wall_ms(median)={cst_out.wall_ms_med}")
+        print(f"False positives (CST_{zoom} \\ ST_): {result.false_positives[zoom]}")
+        print(f"False negatives (ST_ \\ CST_{zoom}): {result.false_negatives[zoom]}")
+        print("----------------------------\n")

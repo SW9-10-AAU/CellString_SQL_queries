@@ -17,12 +17,12 @@ def main():
         trajectory_ids = []
         cellstring_lengths = []
         with conn.cursor() as cur:
-            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 50")
+            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 400")
             trajectory_ids = [row[0] for row in cur.fetchall()]
 
             if trajectory_ids:
                 cur.execute("SELECT cardinality(cellstring_z21) FROM prototype2.trajectory_cs WHERE trajectory_id = ANY(%s)", (trajectory_ids,))
-                cellstring_lengths = [row[0] for row in cur.fetchall()]
+                cellstring_lengths = [row[0] for row in cur.fetchall() if row[0] is not None]
 
         for benchmark in REGISTRY:
             print(f"Running benchmark:", benchmark.name)
@@ -30,10 +30,11 @@ def main():
             print_result(result)
 
         if cellstring_lengths:
-            print("\n--- Random trajectory Statistics ---")
-            print(f"Min: {min(cellstring_lengths)}")
-            print(f"Median: {median(cellstring_lengths)}")
-            print(f"Max: {max(cellstring_lengths)}")
+            print("\n--- Random LineString trajectory statistics ---")
+            print(f"Min length: {min(cellstring_lengths)}")
+            print(f"Median length: {median(cellstring_lengths)}")
+            print(f"Max length: {max(cellstring_lengths)}")
+            print(f"Count of trajectory ids: {len(cellstring_lengths)}")
 
     finally:
         conn.close()

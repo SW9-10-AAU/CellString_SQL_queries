@@ -16,25 +16,20 @@ CST_SQL = """
 SELECT
     traj.trajectory_id,
     area.area_id,
-    CST_Intersection(traj.cellstring_z21, area.cellstring_z21) AS intersection
+    traj.cellstring_{zoom} & area.cellstring_{zoom} AS intersection
 FROM
     prototype2.trajectory_cs AS traj,
     benchmark.area_cs AS area
 WHERE area.area_id = 2
-    AND CST_Intersects(traj.cellstring_z21, area.cellstring_z21);
+    AND traj.cellstring_{zoom} && area.cellstring_{zoom};
 """
 
-# Example shared parameter for both queries (e.g., a WKT polygon).
-PARAMS = (
-
-)
 
 BENCHMARK = Benchmark(
-    name="Intersects example (traj vs area)",
+    name="Find intersecting trajectories in an area",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
-    params=PARAMS,
-    repeats=5,  # adjust if needed
-    per_trajectory=False
+    repeats=5,
+    zoom_levels=["z13", "z17", "z21"],
 )
 

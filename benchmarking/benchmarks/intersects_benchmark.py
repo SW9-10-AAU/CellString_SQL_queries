@@ -19,20 +19,14 @@ FROM
     prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.trajectory_id = %s
-    AND CST_Intersects(trajA.cellstring_z21, trajB.cellstring_z21);
+    AND trajA.cellstring_{zoom} && trajB.cellstring_{zoom};
 """
-
-# Example shared parameter for both queries (e.g., a WKT polygon).
-PARAMS = (
-
-)
 
 BENCHMARK = Benchmark(
     name="Intersects benchmark",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
-    params=PARAMS,
-    repeats=5,  # adjust if needed
-    per_trajectory=True
+    with_trajectory_ids=True,
+    zoom_levels=["z13", "z17", "z21"],
 )
 
