@@ -18,6 +18,9 @@ SELECT
     ROUND(AVG(COALESCE(array_length(cellstring_z21, 1), 0)), 1) AS avg_cellstring_prot2_z21_length,
     MIN(COALESCE(array_length(cellstring_z21, 1), 0))           AS min_cellstring_prot2_z21_length,
     MAX(COALESCE(array_length(cellstring_z21, 1), 0))           AS max_cellstring_prot2_z21_length,
+    ROUND(AVG(COALESCE(array_length(cellstring_z17, 1), 0)), 1) AS avg_cellstring_prot2_z17_length,
+    MIN(COALESCE(array_length(cellstring_z17, 1), 0))           AS min_cellstring_prot2_z17_length,
+    MAX(COALESCE(array_length(cellstring_z17, 1), 0))           AS max_cellstring_prot2_z17_length,
     ROUND(AVG(COALESCE(array_length(cellstring_z13, 1), 0)), 1) AS avg_cellstring_prot2_z13_length,
     MIN(COALESCE(array_length(cellstring_z13, 1), 0))           AS min_cellstring_prot2_z13_length,
     MAX(COALESCE(array_length(cellstring_z13, 1), 0))           AS max_cellstring_prot2_z13_length
@@ -30,6 +33,7 @@ SELECT
     area_id,
     name,
     cardinality(cellstring_z21) as num_cells_z21,
+    cardinality(cellstring_z17) as num_cells_z17,
     cardinality(cellstring_z13) as num_cells_z13
 FROM benchmark.area_cs
 ORDER BY num_cells_z21 DESC;
@@ -54,8 +58,9 @@ FROM
    benchmark.area_cs AS area
 WHERE
    area.area_id = 3
-   AND traj.cellstring_z13 && area.cellstring_z13;
---    AND traj.cellstring_z21 && area.cellstring_z21;
+   --AND traj.cellstring_z13 && area.cellstring_z13;
+   AND traj.cellstring_z17 && area.cellstring_z17;
+   --AND traj.cellstring_z21 && area.cellstring_z21;
 
 
 -- Trajectories der krydser et langt trajectory
@@ -76,5 +81,6 @@ FROM
    prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
    AND trajA.trajectory_id = 28749
---    AND trajA.cellstring_z13 && trajB.cellstring_z13;
-   AND trajA.cellstring_z21 && trajB.cellstring_z21;
+    AND trajA.cellstring_z13 && trajB.cellstring_z13;
+  --AND trajA.cellstring_z17 && trajB.cellstring_z17;
+  -- AND trajA.cellstring_z21 && trajB.cellstring_z21;
