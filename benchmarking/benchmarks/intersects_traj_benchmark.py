@@ -7,7 +7,7 @@ FROM
     prototype2.trajectory_ls AS trajA,
     prototype2.trajectory_ls AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
-    AND trajA.trajectory_id = 31889
+    AND trajA.trajectory_id = %s
     AND ST_Intersects(trajA.geom, trajB.geom);
 """
 
@@ -18,20 +18,15 @@ FROM
     prototype2.trajectory_cs AS trajA,
     prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
-    AND trajA.trajectory_id = 31889
-    AND CST_Intersects(trajA.cellstring_z21, trajB.cellstring_z21);
+    AND trajA.trajectory_id = %s
+    AND CST_Intersects(trajA.cellstring_{zoom}, trajB.cellstring_{zoom});
 """
 
-# Example shared parameter for both queries (e.g., a WKT polygon).
-PARAMS = (
-
-)
-
 BENCHMARK = Benchmark(
-    name="Intersects long trajectory (small MBR)",
+    name="Find trajectories that intersects another trajectory",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
-    params=PARAMS,
-    repeats=5,  # adjust if needed
+    with_trajectory_ids=True,
+    zoom_levels=["z13", "z17", "z21"],
 )
 
