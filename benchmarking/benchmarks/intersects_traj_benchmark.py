@@ -19,11 +19,11 @@ FROM
     prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.trajectory_id = %s
-    AND trajA.cellstring_{zoom} && trajB.cellstring_{zoom};
+    AND CST_Intersects(trajA.cellstring_{zoom}, trajB.cellstring_{zoom});
 """
 
 BENCHMARK = Benchmark(
-    name="Intersects benchmark",
+    name="Find trajectories that intersects another trajectory",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
     with_trajectory_ids=True,

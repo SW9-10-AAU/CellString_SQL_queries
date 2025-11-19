@@ -2,9 +2,7 @@ from benchmarking.core import Benchmark
 
 ST_SQL = """
 SELECT
-    traj.trajectory_id,
-    area.area_id,
-    ST_Intersection(traj.geom, area.geom) AS intersection
+    traj.trajectory_id
 FROM
     prototype2.trajectory_ls AS traj,
     benchmark.area_poly AS area
@@ -14,19 +12,17 @@ WHERE area.area_id = 2
 
 CST_SQL = """
 SELECT
-    traj.trajectory_id,
-    area.area_id,
-    traj.cellstring_{zoom} & area.cellstring_{zoom} AS intersection
+    traj.trajectory_id
 FROM
     prototype2.trajectory_cs AS traj,
     benchmark.area_cs AS area
 WHERE area.area_id = 2
-    AND traj.cellstring_{zoom} && area.cellstring_{zoom};
+    AND CST_Intersects(traj.cellstring_{zoom}, area.cellstring_{zoom});
 """
 
 
 BENCHMARK = Benchmark(
-    name="Find intersecting trajectories in an area",
+    name="Find trajectories that intersects an area",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
     repeats=5,
