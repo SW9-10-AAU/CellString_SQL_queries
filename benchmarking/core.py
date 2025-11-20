@@ -76,7 +76,8 @@ def _fetch_all_with_wall_ms(
     _discard_and_set(cur, statement_timeout_seconds)
     start = time.perf_counter()
     cur.execute(sql, params)
-    return cur.fetchall(), time.perf_counter() - start * 1000.0
+    rows = cur.fetchall()
+    return rows, (time.perf_counter() - start) * 1000.0
 
 
 def _warmup(cur, sql: str, params: Sequence[Any], statement_timeout_seconds: int | None = None) -> None:
