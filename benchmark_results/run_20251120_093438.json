@@ -1,0 +1,294 @@
+{
+  "meta": {
+    "run_started_at": "2025-11-20T09:34:38.301339+00:00",
+    "trajectory_count": 5,
+    "trajectory_ids": [
+      617,
+      13106,
+      4902,
+      13046,
+      12479
+    ],
+    "zoom_levels": [
+      "z13",
+      "z17",
+      "z21"
+    ],
+    "cellstring_stats": [
+      {
+        "label": "LineString",
+        "min": 32.36038160391236,
+        "median": 2503.43854398374,
+        "max": 194195.01929435178,
+        "count": 5
+      },
+      {
+        "label": "CellString_z13",
+        "min": 1,
+        "median": 1,
+        "max": 41,
+        "count": 5
+      },
+      {
+        "label": "CellString_z17",
+        "min": 1,
+        "median": 6,
+        "max": 621,
+        "count": 5
+      },
+      {
+        "label": "CellString_z21",
+        "min": 4,
+        "median": 96,
+        "max": 9882,
+        "count": 5
+      }
+    ],
+    "tested_cellstring_types": [
+      "LineString",
+      "CellString_z13",
+      "CellString_z17",
+      "CellString_z21"
+    ],
+    "tables_used": [
+      "prototype2.trajectory_cs",
+      "prototype2.trajectory_ls"
+    ]
+  },
+  "benchmarks": [
+    {
+      "name": "Find trajectories that intersects another trajectory",
+      "type": "time",
+      "tables_used": [
+        "prototype2.trajectory_cs",
+        "prototype2.trajectory_ls"
+      ],
+      "result": {
+        "st": {
+          "exec_ms_med": 343.399,
+          "wall_ms_med": 372.768,
+          "timed_out": false
+        },
+        "cst_results": {
+          "z13": {
+            "exec_ms_med": 0.111,
+            "wall_ms_med": 3.826,
+            "timed_out": false
+          },
+          "z17": {
+            "exec_ms_med": 0.101,
+            "wall_ms_med": 3.628,
+            "timed_out": false
+          },
+          "z21": {
+            "exec_ms_med": 0.217,
+            "wall_ms_med": 4.413,
+            "timed_out": false
+          }
+        },
+        "false_positives": {
+          "z13": 706,
+          "z17": 21,
+          "z21": 3
+        },
+        "false_negatives": {
+          "z13": 15,
+          "z17": 15,
+          "z21": 17
+        },
+        "per_area_results": {}
+      }
+    },
+    {
+      "name": "Find trajectories that intersects an area",
+      "type": "time",
+      "tables_used": [
+        "prototype2.trajectory_cs",
+        "prototype2.trajectory_ls"
+      ],
+      "result": {
+        "st": {
+          "exec_ms_med": 370.947,
+          "wall_ms_med": 376.166,
+          "timed_out": false
+        },
+        "cst_results": {
+          "z13": {
+            "exec_ms_med": 0.126,
+            "wall_ms_med": 3.979,
+            "timed_out": false
+          },
+          "z17": {
+            "exec_ms_med": 1.455,
+            "wall_ms_med": 6.994,
+            "timed_out": false
+          },
+          "z21": {
+            "exec_ms_med": 4079.126,
+            "wall_ms_med": 4126.12,
+            "timed_out": false
+          }
+        },
+        "false_positives": {
+          "z13": 74,
+          "z17": 16,
+          "z21": 0
+        },
+        "false_negatives": {
+          "z13": 0,
+          "z17": 0,
+          "z21": 44
+        },
+        "per_area_results": {
+          "1": {
+            "ST_": {
+              "exec_ms_med": 880.947,
+              "wall_ms_med": 929.739,
+              "timed_out": false
+            },
+            "CST_z13": {
+              "exec_ms_med": 0.257,
+              "wall_ms_med": 4.629,
+              "timed_out": false
+            },
+            "CST_z17": {
+              "exec_ms_med": 249.065,
+              "wall_ms_med": 254.357,
+              "timed_out": false
+            },
+            "CST_z21": {
+              "exec_ms_med": 0.0,
+              "wall_ms_med": 0.0,
+              "timed_out": true
+            }
+          },
+          "2": {
+            "ST_": {
+              "exec_ms_med": 741.82,
+              "wall_ms_med": 745.026,
+              "timed_out": false
+            },
+            "CST_z13": {
+              "exec_ms_med": 0.109,
+              "wall_ms_med": 4.055,
+              "timed_out": false
+            },
+            "CST_z17": {
+              "exec_ms_med": 0.134,
+              "wall_ms_med": 4.852,
+              "timed_out": false
+            },
+            "CST_z21": {
+              "exec_ms_med": 6.715,
+              "wall_ms_med": 10.914,
+              "timed_out": false
+            }
+          },
+          "3": {
+            "ST_": {
+              "exec_ms_med": 774.071,
+              "wall_ms_med": 791.981,
+              "timed_out": false
+            },
+            "CST_z13": {
+              "exec_ms_med": 0.391,
+              "wall_ms_med": 6.386,
+              "timed_out": false
+            },
+            "CST_z17": {
+              "exec_ms_med": 2.329,
+              "wall_ms_med": 9.135,
+              "timed_out": false
+            },
+            "CST_z21": {
+              "exec_ms_med": 8528.196,
+              "wall_ms_med": 8538.314,
+              "timed_out": false
+            }
+          },
+          "21": {
+            "ST_": {
+              "exec_ms_med": 0.074,
+              "wall_ms_med": 6.767,
+              "timed_out": false
+            },
+            "CST_z13": {
+              "exec_ms_med": 0.065,
+              "wall_ms_med": 3.903,
+              "timed_out": false
+            },
+            "CST_z17": {
+              "exec_ms_med": 0.071,
+              "wall_ms_med": 3.311,
+              "timed_out": false
+            },
+            "CST_z21": {
+              "exec_ms_med": 5.375,
+              "wall_ms_med": 8.155,
+              "timed_out": false
+            }
+          },
+          "22": {
+            "ST_": {
+              "exec_ms_med": 0.068,
+              "wall_ms_med": 7.307,
+              "timed_out": false
+            },
+            "CST_z13": {
+              "exec_ms_med": 0.072,
+              "wall_ms_med": 3.448,
+              "timed_out": false
+            },
+            "CST_z17": {
+              "exec_ms_med": 0.581,
+              "wall_ms_med": 3.77,
+              "timed_out": false
+            },
+            "CST_z21": {
+              "exec_ms_med": 8151.537,
+              "wall_ms_med": 8241.325,
+              "timed_out": false
+            }
+          },
+          "23": {
+            "ST_": {
+              "exec_ms_med": 0.07,
+              "wall_ms_med": 6.695,
+              "timed_out": false
+            },
+            "CST_z13": {
+              "exec_ms_med": 0.142,
+              "wall_ms_med": 3.368,
+              "timed_out": false
+            },
+            "CST_z17": {
+              "exec_ms_med": 240.524,
+              "wall_ms_med": 244.946,
+              "timed_out": false
+            },
+            "CST_z21": {
+              "exec_ms_med": 0.0,
+              "wall_ms_med": 0.0,
+              "timed_out": true
+            }
+          }
+        }
+      }
+    },
+    {
+      "name": "Hausdorff Distance between CellString and LineString",
+      "type": "value",
+      "tables_used": [
+        "prototype2.trajectory_cs",
+        "prototype2.trajectory_ls"
+      ],
+      "result": {
+        "median_values": {
+          "z13": 0.01576245853262964,
+          "z17": 0.0012202258856783544,
+          "z21": 9.494830828408688e-05
+        }
+      }
+    }
+  ]
+}
