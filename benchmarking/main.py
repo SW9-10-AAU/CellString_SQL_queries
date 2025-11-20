@@ -108,7 +108,7 @@ def _serialize_value_result(result: ValueBenchmarkResult) -> dict:
 
 
 def _write_json_report(payload: dict, run_started_at: datetime) -> Path:
-    output_dir = Path("benchmark_results")
+    output_dir = Path("benchmarking/benchmark_results")
     output_dir.mkdir(parents=True, exist_ok=True)
     file_name = f"run_{run_started_at.strftime('%Y%m%d_%H%M%S')}.json"
     output_path = output_dir / file_name
