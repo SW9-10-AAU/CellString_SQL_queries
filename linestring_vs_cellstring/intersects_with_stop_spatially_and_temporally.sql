@@ -67,7 +67,7 @@ JOIN prototype2.stop_poly s
  AND s.ts_start <= r.ref_end;
 
 
------ CST_ version (1.6s) -----
+----- CST_ version (0.4s) -----
 WITH ref AS (
     SELECT mmsi,
            stop_id,
