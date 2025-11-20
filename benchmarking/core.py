@@ -102,7 +102,7 @@ def _keyset(rows: Iterable[Tuple]) -> set:
     return {r[0] for r in rows}
 
 
-def _execute_queries(
+def _execute_random_or_repeated_queries(
         cur,
         sql: str,
         params: Sequence[Any],
@@ -169,7 +169,7 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
 
             for area_id in bench.area_ids:
                 area_params = (area_id,) + bench.params
-                st_run = _execute_queries(
+                st_run = _execute_random_or_repeated_queries(
                     cur, bench.st_sql, area_params, repeats=bench.repeats, timeout_seconds=bench.timeout_seconds
                 )
                 per_area_results[area_id] = {"ST_": st_run}
@@ -179,7 +179,7 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
 
                 for zoom in bench.zoom_levels:
                     sql = bench.cst_sql.format(zoom=zoom)
-                    cst_run = _execute_queries(
+                    cst_run = _execute_random_or_repeated_queries(
                         cur, sql, area_params, repeats=bench.repeats, timeout_seconds=bench.timeout_seconds
                     )
                     per_area_results[area_id][f"CST_{zoom}"] = cst_run
@@ -192,7 +192,7 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
                 zoom: _aggregate_runs(cst_valid_runs[zoom], cst_combined[zoom]) for zoom in bench.zoom_levels
             }
         elif bench.with_trajectory_ids:
-            st_out = _execute_queries(
+            st_out = _execute_random_or_repeated_queries(
                 cur,
                 bench.st_sql,
                 bench.params,
@@ -202,7 +202,7 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
             cst_results = {}
             for zoom in bench.zoom_levels:
                 sql = bench.cst_sql.format(zoom=zoom)
-                cst_results[zoom] = _execute_queries(
+                cst_results[zoom] = _execute_random_or_repeated_queries(
                     cur,
                     sql,
                     bench.params,
@@ -210,18 +210,18 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
                     trajectory_ids=trajectory_ids
                 )
         else:
-            st_out = _execute_queries(
+            st_out = _execute_random_or_repeated_queries(
                 cur, bench.st_sql, bench.params, repeats=bench.repeats, timeout_seconds=bench.timeout_seconds
             )
             cst_results = {}
             if bench.zoom_levels:
                 for zoom in bench.zoom_levels:
                     sql = bench.cst_sql.format(zoom=zoom)
-                    cst_results[zoom] = _execute_queries(
+                    cst_results[zoom] = _execute_random_or_repeated_queries(
                         cur, sql, bench.params, repeats=bench.repeats, timeout_seconds=bench.timeout_seconds
                     )
             else:
-                cst_results[""] = _execute_queries(
+                cst_results[""] = _execute_random_or_repeated_queries(
                     cur, bench.cst_sql, bench.params, repeats=bench.repeats, timeout_seconds=bench.timeout_seconds
                 )
 

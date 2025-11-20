@@ -15,12 +15,89 @@ Specific types of queries using CellString
 4. Install requirements: `pip install -r requirements.txt`
 5. Add .env file with your PostgreSQL credentials (see .env.example for reference)
 
+### Setting up a benchmark
+It's possible to set up either a `TimeBenchmark` which returns a timing report for two different SQL queries, or a `ValueBenchmark` which runs a query on different trajectory ids to measure a median value, example finding the median _Hausdorff distance_ for 400 trajectories at different zoom levels.
+
+
+#### TimeBenchmark
+1. Create a new benchmark file in `benchmarking/benchmarks/`.
+2. Import the class `from benchmarking.core import TimeBenchmark`.
+3. Define a SQL query for both ST_ and CST_ versions. For example: 
+```python
+ST_SQL = """
+SELECT DISTINCT
+    trajB.trajectory_id
+FROM
+    prototype2.trajectory_ls AS trajA,
+    prototype2.trajectory_ls AS trajB
+WHERE trajA.trajectory_id <> trajB.trajectory_id
+    AND trajA.trajectory_id = %s
+    AND ST_Intersects(trajA.geom, trajB.geom);
+"""
+```
+4. Define the class instance with parameters:
+```python
+BENCHMARK = TimeBenchmark(
+    name="Find trajectories that intersects an area",
+    st_sql=ST_SQL,
+    cst_sql=CST_SQL,
+    repeats=2, (OPTIONAL)
+    with_trajectory_ids=True, (OPTIONAL)
+    zoom_levels=["z13", "z17", "z21"],
+    area_ids=[], (Can be used to specify specific area ids to test)
+    use_area_ids=True,
+    timeout_seconds=120, (OPTIONAL)
+)
+```
+If either `with_trajectory_ids` or `use_area_ids` is set to True, the benchmark will sample trajectory ids or area ids from the database to use as parameters for the query.
+
+
+#### ValueBenchmark
+1. Create a new benchmark file in `benchmarking/benchmarks/`.
+2. Import the class `from benchmarking.core import ValueBenchmark`.
+3. Define a SQL query that calculates the value to be measured. For example:
+```python
+SQL = """
+SELECT
+    cst_hausdorffdistance(cs.cellstring_{zoom}, ls.geom, {zoom_level})
+FROM prototype2.trajectory_ls ls
+JOIN prototype2.trajectory_cs cs
+    ON ls.trajectory_id = cs.trajectory_id
+WHERE
+    ls.trajectory_id = %s;
+"""
+```
+4. Define the class instance with parameters:
+```python
+BENCHMARK = ValueBenchmark(
+    name="Hausdorff Distance between CellString and LineString",
+    sql=SQL,
+    zoom_levels=["z13", "z17", "z21"],
+)
+```
+
 ### Running Benchmarks
-Run the benchmark script with: `python -m benchmarking.main`
+1. Make sure your PostgreSQL database is running and accessible.
+2. Make sure to have created the necessary benchmark files in `benchmarking/benchmarks/`.
+3. Add which benchmarks to run in `benchmarking/benchmarks/__init__.py` to `RUN_PLAN`. For example:
+```python
+from .intersects_area_benchmark import BENCHMARK as intersects_area_benchmark
+from .intersects_traj_benchmark import BENCHMARK as intersects_traj_benchmark
+from .hausdorff_distance_benchmark import BENCHMARK as hausdorff_distance_benchmark
 
+RUN_PLAN = [
+    intersects_traj_benchmark,
+    intersects_area_benchmark,
+    hausdorff_distance_benchmark,
+]
+```
+4. Change this line in `benchmarking/main.py` if needed to adjust the number of random trajectories the benchmarks will run on:
+```python
+cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 5")
+```
+5. Run the benchmark script with: `python -m benchmarking.main`
 
-
-#### Sample Output
+### Sample Output
 ```
 --- Intersects benchmark ---
 ST_:  exec_ms(median)=1052.918,  wall_ms(median)=1115.13
