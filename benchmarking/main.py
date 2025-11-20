@@ -126,6 +126,9 @@ def main():
 
     run_started_at = datetime.now(timezone.utc)
 
+    if not RUN_PLAN:
+        print("No benchmarks defined in RUN_PLAN. Exiting.")
+        return
     conn = connect_to_db()
     try:
         trajectory_ids = []

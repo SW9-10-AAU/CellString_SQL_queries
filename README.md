@@ -1,6 +1,8 @@
 # CellString_SQL_queries
 Specific types of queries using CellString
 
+## Graphs
+1. Run `python -m benchmarking.graphs.graph_generation` to generate graphs (requires a generated JSON from benchmarks).
 
 ## Benchmarking CellString SQL Queries
 
