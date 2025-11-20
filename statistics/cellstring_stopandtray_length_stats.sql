@@ -1,16 +1,26 @@
 -- Trajectory lengths
 SELECT
-    ROUND(AVG(COALESCE(array_length(cellstring_z21, 1), 0)), 1) AS avg_cellstring_length,
-    MIN(COALESCE(array_length(cellstring_z21, 1), 0))           AS min_cellstring_length,
-    MAX(COALESCE(array_length(cellstring_z21, 1), 0))           AS max_cellstring_length
-FROM prototype2.trajectory_cs;
+    ROUND(AVG(arr_len), 1)                   AS avg_length,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY arr_len) AS median_length,
+    MIN(arr_len)                             AS min_length,
+    MAX(arr_len)                             AS max_length
+FROM (
+    SELECT COALESCE(array_length(cellstring_z21, 1), 0) AS arr_len
+    FROM prototype2.trajectory_cs
+--     FROM prototype2.trajectory_supercover_cs
+) t;
 
 -- Stop lengths
 SELECT
-    ROUND(AVG(COALESCE(array_length(cellstring_z21, 1), 0)), 1) AS avg_cellstring_length,
-    MIN(COALESCE(array_length(cellstring_z21, 1), 0))           AS min_cellstring_length,
-    MAX(COALESCE(array_length(cellstring_z21, 1), 0))           AS max_cellstring_length
-FROM prototype2.stop_cs;
+    ROUND(AVG(arr_len), 1)                   AS avg_length,
+    PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY arr_len) AS median_length,
+    MIN(arr_len)                             AS min_length,
+    MAX(arr_len)                             AS max_length
+FROM (
+    SELECT COALESCE(array_length(cellstring_z21, 1), 0) AS arr_len
+    FROM prototype2.stop_cs
+) t;
+
 
 --traj_id of longest cell_traj
 SELECT trajectory_id,
