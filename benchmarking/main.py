@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
+from typing import Dict
 from dotenv import load_dotenv
 from benchmarking.connect import connect_to_db
 from benchmarking.core import (
@@ -84,11 +85,14 @@ def _collect_tables_from_benchmark(benchmark):
 
 
 def _serialize_run_outcome(run: RunOutcome) -> dict:
-    return {
+    payload = {
         "exec_ms_med": run.exec_ms_med,
         "wall_ms_med": run.wall_ms_med,
         "timed_out": run.timed_out,
     }
+    if run.samples:
+        payload["samples"] = run.samples
+    return payload
 
 def _serialize_time_result(result: TimeBenchmarkResult) -> dict:
     return {
@@ -132,8 +136,8 @@ def main():
     conn = connect_to_db()
     try:
         trajectory_ids = []
-        linestring_lengths = []
-        cellstring_lengths = {zoom: [] for zoom in ZOOM_LEVELS}
+        linestring_lengths_by_id: Dict[int, float] = {}
+        cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
         benchmark_outputs = []
 
         with conn.cursor() as cur:
@@ -142,18 +146,26 @@ def main():
 
             if trajectory_ids:
                 cur.execute(
-                    "SELECT ST_Length(ST_Transform(geom, 3857)) FROM prototype2.trajectory_ls WHERE trajectory_id = ANY(%s)",
+                    "SELECT trajectory_id, ST_Length(ST_Transform(geom, 3857)) FROM prototype2.trajectory_ls WHERE trajectory_id = ANY(%s)",
                     (trajectory_ids,)
                 )
-                linestring_lengths = [row[0] for row in cur.fetchall() if row[0] is not None]
+                linestring_lengths_by_id = {
+                    int(row[0]): row[1]
+                    for row in cur.fetchall()
+                    if row[0] is not None and row[1] is not None
+                }
 
                 for zoom in ZOOM_LEVELS:
                     cur.execute(
-                        f"SELECT Cardinality(cellstring_{zoom}) "
+                        f"SELECT trajectory_id, Cardinality(cellstring_{zoom}) "
                         "FROM prototype2.trajectory_cs WHERE trajectory_id = ANY(%s)",
                         (trajectory_ids,)
                     )
-                    cellstring_lengths[zoom] = [row[0] for row in cur.fetchall() if row[0] is not None]
+                    cellstring_lengths[zoom] = {
+                        int(row[0]): row[1]
+                        for row in cur.fetchall()
+                        if row[0] is not None and row[1] is not None
+                    }
 
         for benchmark in RUN_PLAN:
             bench_instance = benchmark
@@ -188,10 +200,10 @@ def main():
                 )
 
         stats_payload = []
-        if linestring_lengths:
-            stats_payload.append(("LineString", linestring_lengths))
+        if linestring_lengths_by_id:
+            stats_payload.append(("LineString", list(linestring_lengths_by_id.values())))
         for zoom in ZOOM_LEVELS:
-            lengths = cellstring_lengths.get(zoom)
+            lengths = list(cellstring_lengths.get(zoom)).values()
             if lengths:
                 stats_payload.append((f"CellString_{zoom}", lengths))
         stats_summary = _print_trajectory_stats(stats_payload, len(trajectory_ids))
@@ -206,6 +218,11 @@ def main():
                 "trajectory_stats": stats_summary,
                 "tested_types": [entry["label"] for entry in stats_summary],
                 "tables_used": all_tables_used,
+                "trajectory_cardinalities": {
+                    zoom: {str(traj_id): count for traj_id, count in counts.items()}
+                    for zoom, counts in cellstring_lengths.items()
+                    if counts
+                }
             },
             "benchmarks": benchmark_outputs,
         }

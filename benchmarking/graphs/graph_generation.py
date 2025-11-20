@@ -28,48 +28,84 @@ def _load_report(report_path: Path) -> Dict[str, Any]:
     return json.loads(report_path.read_text())
 
 
-def _build_time_rows(
-        benchmarks: List[Dict[str, Any]],
-        length_stats: Dict[str, Dict[str, Any]],
+def _filter_benchmarks(benchmarks: List[Dict[str, Any]], selected: Optional[List[str]]) -> List[Dict[str, Any]]:
+    if not selected:
+        return benchmarks
+    wanted = set(selected)
+    return [bench for bench in benchmarks if bench["name"] in wanted]
+
+
+def _get_cardinality_map(meta: Dict[str, Any], zoom: str) -> Dict[int, int]:
+    card_data = meta.get("trajectory_cardinalities", {})
+    zoom_card = card_data.get(zoom, {})
+    return {int(traj_id): count for traj_id, count in zoom_card.items()}
+
+
+def _build_sample_rows(
+        samples: List[Dict[str, Any]],
+        card_map: Dict[int, int],
+        benchmark_name: str,
+        series_label: str,
 ) -> List[Dict[str, Any]]:
+    rows: List[Dict[str, Any]] = []
+    for sample in samples:
+        trajectory_id = sample.get("trajectory_id")
+        exec_ms = sample.get("exec_ms")
+        if trajectory_id is None or exec_ms is None:
+            continue
+        cell_count = card_map.get(int(trajectory_id))
+        if cell_count is None:
+            continue
+        rows.append(
+            {
+                "benchmark": benchmark_name,
+                "series": series_label,
+                "trajectory_id": trajectory_id,
+                "cell_count": cell_count,
+                "exec_ms": exec_ms,
+            }
+        )
+    return rows
+
+
+def plot_cellstring_delta(
+        benchmarks: List[Dict[str, Any]],
+        meta: Dict[str, Any],
+        *,
+        zoom: str = "z21",
+) -> None:
+    card_map = _get_cardinality_map(meta, zoom)
+    if not card_map:
+        print(f"No trajectory cardinalities recorded for {zoom}; skipping CellString delta plot.")
+        return
+
     rows: List[Dict[str, Any]] = []
     for bench in benchmarks:
         if bench.get("benchmark_type") != "time":
             continue
-        st = bench["result"]["st"]
-        st_exec_ms = st["exec_ms_med"]
-        for zoom, cst in bench["result"]["cst_results"].items():
-            label = f"CellString_{zoom}" if zoom else "CellString"
-            stat = length_stats.get(label)
-            rows.append(
-                {
-                    "benchmark": bench["name"],
-                    "zoom": zoom or "n/a",
-                    "median_length": stat["median"] if stat else None,
-                    "delta_exec_ms": cst["exec_ms_med"] - st_exec_ms,
-                    "st_exec_ms": st_exec_ms,
-                    "cst_exec_ms": cst["exec_ms_med"],
-                }
+        result = bench["result"]
+        rows.extend(
+            _build_sample_rows(result.get("st", {}).get("samples", []), card_map, bench["name"], "ST_")
+        )
+        cst_zoom = result.get("cst_results", {}).get(zoom)
+        if cst_zoom:
+            rows.extend(
+                _build_sample_rows(cst_zoom.get("samples", []), card_map, bench["name"], f"CST_{zoom}")
             )
-    return rows
 
-
-def plot_cellstring_delta(time_rows: List[Dict[str, Any]]) -> None:
-    if not time_rows:
-        print("No time benchmarks available for delta scatter.")
+    if not rows:
+        print("No per-trajectory execution samples available; skipping CellString delta plot.")
         return
-    df = pd.DataFrame(time_rows)
+
+    df = pd.DataFrame(rows)
     fig = px.scatter(
         df,
-        x="median_length",
-        y="delta_exec_ms",
-        color="zoom",
-        hover_data=["benchmark"],
-        title="CellString vs. LineString wall-time delta",
-        labels={"median_length": "Median trajectory length", "delta_exec_ms": "Execution delta (ms)"}
+        x="cell_count",
+        y="exec_ms",
+        color="series",
+        hover_data=["trajectory_id", "benchmark"],
+        title=f"Execution time vs. "
     )
-    fig.add_hline(y=0, line_dash="dash", annotation_text="CellString == LineString")
-    fig.write_image("benchmarking/graphs/output/cellstring_delta.pdf")
 
 
 def plot_wall_time_bars(time_rows: List[Dict[str, Any]]) -> None:
