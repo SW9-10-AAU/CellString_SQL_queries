@@ -141,7 +141,7 @@ def main():
         benchmark_outputs = []
 
         with conn.cursor() as cur:
-            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 5")
+            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 400")
             trajectory_ids = [row[0] for row in cur.fetchall()]
 
             if trajectory_ids:
@@ -203,7 +203,7 @@ def main():
         if linestring_lengths_by_id:
             stats_payload.append(("LineString", list(linestring_lengths_by_id.values())))
         for zoom in ZOOM_LEVELS:
-            lengths = list(cellstring_lengths.get(zoom)).values()
+            lengths = list(cellstring_lengths.get(zoom, {}).values())
             if lengths:
                 stats_payload.append((f"CellString_{zoom}", lengths))
         stats_summary = _print_trajectory_stats(stats_payload, len(trajectory_ids))

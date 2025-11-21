@@ -1,0 +1,594 @@
+{
+  "meta": {
+    "run_started_at": "2025-11-21T11:58:16.259721+00:00",
+    "trajectory_count": 20,
+    "trajectory_ids": [
+      3382,
+      3160,
+      4592,
+      12535,
+      1011,
+      3137,
+      11292,
+      3870,
+      1274,
+      153,
+      2953,
+      4229,
+      8540,
+      11042,
+      8430,
+      4625,
+      4121,
+      2030,
+      3093,
+      3781
+    ],
+    "zoom_levels": [
+      "z13",
+      "z17",
+      "z21"
+    ],
+    "trajectory_stats": [
+      {
+        "label": "LineString",
+        "min": 33.50933549396274,
+        "median": 3366.91603511191,
+        "max": 1071419.5975557757,
+        "count": 20
+      },
+      {
+        "label": "CellString_z13",
+        "min": 1,
+        "median": 2.0,
+        "max": 122,
+        "count": 20
+      },
+      {
+        "label": "CellString_z17",
+        "min": 1,
+        "median": 5.5,
+        "max": 2675,
+        "count": 20
+      },
+      {
+        "label": "CellString_z21",
+        "min": 1,
+        "median": 121.0,
+        "max": 50563,
+        "count": 20
+      }
+    ],
+    "tested_types": [
+      "LineString",
+      "CellString_z13",
+      "CellString_z17",
+      "CellString_z21"
+    ],
+    "tables_used": [
+      "prototype2.trajectory_cs",
+      "prototype2.trajectory_ls"
+    ],
+    "trajectory_cardinalities": {
+      "z13": {
+        "153": 63,
+        "1011": 1,
+        "1274": 5,
+        "2030": 1,
+        "2953": 1,
+        "3093": 1,
+        "3137": 1,
+        "3160": 16,
+        "3382": 1,
+        "3781": 30,
+        "3870": 1,
+        "4121": 2,
+        "4229": 5,
+        "4592": 1,
+        "4625": 1,
+        "8430": 3,
+        "8540": 84,
+        "11042": 122,
+        "11292": 2,
+        "12535": 4
+      },
+      "z17": {
+        "153": 2675,
+        "1011": 1,
+        "1274": 109,
+        "2030": 1,
+        "2953": 2,
+        "3093": 1,
+        "3137": 1,
+        "3160": 288,
+        "3382": 2,
+        "3781": 697,
+        "3870": 1,
+        "4121": 6,
+        "4229": 93,
+        "4592": 1,
+        "4625": 1,
+        "8430": 33,
+        "8540": 1194,
+        "11042": 1750,
+        "11292": 5,
+        "12535": 42
+      },
+      "z21": {
+        "153": 50563,
+        "1011": 3,
+        "1274": 1580,
+        "2030": 5,
+        "2953": 4,
+        "3093": 9,
+        "3137": 4,
+        "3160": 4417,
+        "3382": 15,
+        "3781": 8615,
+        "3870": 3,
+        "4121": 123,
+        "4229": 1127,
+        "4592": 4,
+        "4625": 1,
+        "8430": 373,
+        "8540": 15607,
+        "11042": 23530,
+        "11292": 119,
+        "12535": 657
+      }
+    }
+  },
+  "benchmarks": [
+    {
+      "name": "Find trajectories that intersects another trajectory",
+      "benchmark_type": "time",
+      "tables_used": [
+        "prototype2.trajectory_cs",
+        "prototype2.trajectory_ls"
+      ],
+      "result": {
+        "st": {
+          "exec_ms_med": 744.75,
+          "wall_ms_med": 846.648,
+          "timed_out": false,
+          "samples": [
+            {
+              "trajectory_id": 3382,
+              "exec_ms": 617.178,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 3160,
+              "exec_ms": 897.672,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 4592,
+              "exec_ms": 797.895,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 12535,
+              "exec_ms": 24.735,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 1011,
+              "exec_ms": 597.805,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 3137,
+              "exec_ms": 709.962,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 11292,
+              "exec_ms": 831.284,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 3870,
+              "exec_ms": 623.921,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 1274,
+              "exec_ms": 971.256,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 153,
+              "exec_ms": 959.199,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 2953,
+              "exec_ms": 714.505,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 4229,
+              "exec_ms": 812.635,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 8540,
+              "exec_ms": 928.536,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 11042,
+              "exec_ms": 1005.352,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 8430,
+              "exec_ms": 312.266,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 4625,
+              "exec_ms": 646.751,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 4121,
+              "exec_ms": 509.625,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 2030,
+              "exec_ms": 33.436,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 3093,
+              "exec_ms": 774.995,
+              "label": "ST_"
+            },
+            {
+              "trajectory_id": 3781,
+              "exec_ms": 872.959,
+              "label": "ST_"
+            }
+          ]
+        },
+        "cst_results": {
+          "z13": {
+            "exec_ms_med": 0.174,
+            "wall_ms_med": 6.572,
+            "timed_out": false,
+            "samples": [
+              {
+                "trajectory_id": 3382,
+                "exec_ms": 0.155,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 3160,
+                "exec_ms": 0.268,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 4592,
+                "exec_ms": 0.116,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 12535,
+                "exec_ms": 0.096,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 1011,
+                "exec_ms": 0.194,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 3137,
+                "exec_ms": 0.099,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 11292,
+                "exec_ms": 0.103,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 3870,
+                "exec_ms": 0.093,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 1274,
+                "exec_ms": 0.228,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 153,
+                "exec_ms": 0.862,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 2953,
+                "exec_ms": 0.28,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 4229,
+                "exec_ms": 0.102,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 8540,
+                "exec_ms": 1.829,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 11042,
+                "exec_ms": 2.894,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 8430,
+                "exec_ms": 0.093,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 4625,
+                "exec_ms": 0.086,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 4121,
+                "exec_ms": 0.101,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 2030,
+                "exec_ms": 0.235,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 3093,
+                "exec_ms": 0.283,
+                "label": "CST_z13"
+              },
+              {
+                "trajectory_id": 3781,
+                "exec_ms": 1.079,
+                "label": "CST_z13"
+              }
+            ]
+          },
+          "z17": {
+            "exec_ms_med": 0.121,
+            "wall_ms_med": 4.324,
+            "timed_out": false,
+            "samples": [
+              {
+                "trajectory_id": 3382,
+                "exec_ms": 0.119,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 3160,
+                "exec_ms": 0.838,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 4592,
+                "exec_ms": 0.081,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 12535,
+                "exec_ms": 0.109,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 1011,
+                "exec_ms": 0.151,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 3137,
+                "exec_ms": 0.082,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 11292,
+                "exec_ms": 0.099,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 3870,
+                "exec_ms": 0.084,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 1274,
+                "exec_ms": 0.407,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 153,
+                "exec_ms": 12.358,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 2953,
+                "exec_ms": 0.177,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 4229,
+                "exec_ms": 0.192,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 8540,
+                "exec_ms": 6.79,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 11042,
+                "exec_ms": 19.566,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 8430,
+                "exec_ms": 0.095,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 4625,
+                "exec_ms": 0.072,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 4121,
+                "exec_ms": 0.079,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 2030,
+                "exec_ms": 0.077,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 3093,
+                "exec_ms": 0.124,
+                "label": "CST_z17"
+              },
+              {
+                "trajectory_id": 3781,
+                "exec_ms": 4.344,
+                "label": "CST_z17"
+              }
+            ]
+          },
+          "z21": {
+            "exec_ms_med": 0.238,
+            "wall_ms_med": 4.624,
+            "timed_out": false,
+            "samples": [
+              {
+                "trajectory_id": 3382,
+                "exec_ms": 0.085,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 3160,
+                "exec_ms": 19.695,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 4592,
+                "exec_ms": 0.073,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 12535,
+                "exec_ms": 0.934,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 1011,
+                "exec_ms": 0.083,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 3137,
+                "exec_ms": 0.066,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 11292,
+                "exec_ms": 0.248,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 3870,
+                "exec_ms": 0.072,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 1274,
+                "exec_ms": 4.045,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 153,
+                "exec_ms": 1530.221,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 2953,
+                "exec_ms": 0.087,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 4229,
+                "exec_ms": 2.023,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 8540,
+                "exec_ms": 216.989,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 11042,
+                "exec_ms": 589.558,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 8430,
+                "exec_ms": 0.679,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 4625,
+                "exec_ms": 0.075,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 4121,
+                "exec_ms": 0.228,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 2030,
+                "exec_ms": 0.071,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 3093,
+                "exec_ms": 0.104,
+                "label": "CST_z21"
+              },
+              {
+                "trajectory_id": 3781,
+                "exec_ms": 81.072,
+                "label": "CST_z21"
+              }
+            ]
+          }
+        },
+        "false_positives": {
+          "z13": 1386,
+          "z17": 546,
+          "z21": 65
+        },
+        "false_negatives": {
+          "z13": 1,
+          "z17": 0,
+          "z21": 19
+        },
+        "per_area_results": {}
+      }
+    }
+  ]
+}
