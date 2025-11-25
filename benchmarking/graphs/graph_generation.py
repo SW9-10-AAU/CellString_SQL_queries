@@ -160,8 +160,8 @@ def plot_cellstring_delta(
         print("No paired ST_/CST_ samples with cardinalities; skipping CellString delta plot.")
         return
 
-    df = pd.DataFrame(rows)
-    fig = px.scatter(
+    df = pd.DataFrame(rows).sort_values(["benchmark", "cell_count"])
+    fig = px.line(
         df,
         x="cell_count",
         y="delta_exec_ms",
@@ -169,6 +169,8 @@ def plot_cellstring_delta(
         hover_data=["trajectory_id", "st_exec_ms", "cst_exec_ms"],
         title=f"CST - ST execution delta vs. CellString cardinality ({zoom})",
         labels={"cell_count": f"Cell count @{zoom}", "exec_ms": "Execution time (ms)"},
+        markers=False,
+        log_x=True,
     )
     fig.add_hline(y=0, line_dash="dash", annotation_text="CellString == LineString")
     fig.update_layout(
@@ -242,6 +244,7 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
         facet_col="benchmark",
         barmode="group",
         title="False positives/negatives per benchmark",
+        log_y=True,
     )
     output_path = _next_output_path("false_match_counts")
     fig.write_image(output_path)

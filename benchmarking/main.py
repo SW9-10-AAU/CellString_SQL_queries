@@ -141,7 +141,7 @@ def main():
         benchmark_outputs = []
 
         with conn.cursor() as cur:
-            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 400")
+            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 50")
             trajectory_ids = [row[0] for row in cur.fetchall()]
 
             if trajectory_ids:

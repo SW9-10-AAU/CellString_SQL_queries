@@ -4,4 +4,6 @@ from .hausdorff_distance_benchmark import BENCHMARK as hausdorff_distance_benchm
 
 RUN_PLAN = [
     intersects_traj_benchmark,
+    intersects_area_benchmark,
+    hausdorff_distance_benchmark,
 ]
