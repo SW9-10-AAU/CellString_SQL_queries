@@ -85,6 +85,27 @@ def _get_linestring_length_map(meta: Dict[str, Any]) -> Dict[int, float]:
 
     return length_map
 
+def _get_stop_area_map(meta: Dict[str, Any]) -> Dict[int, float]:
+    candidates = (
+        "stop_polygon_areas_m2",
+        "stop_polygons_area_m2",
+        "stop_areas_m2",
+        "stop_area_m2",
+    )
+    for key in candidates:
+        raw = meta.get(key)
+        if not raw:
+            continue
+        normalized: Dict[int, float] = {}
+        for stop_id, area_m2 in raw.items():
+            try:
+                normalized[int(stop_id)] = float(area_m2)
+            except (TypeError, ValueError):
+                continue
+        if normalized:
+            return normalized
+    return {}
+
 
 def _build_time_rows(
         benchmarks: List[Dict[str, Any]],
@@ -148,6 +169,7 @@ def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with
         legend_title=dict(text=""),
         font_size=18,
         legend_font_size=25,
+        legend_font_weight=550,
         legend_itemsizing="constant",
     )
     fig.update_xaxes(
@@ -207,7 +229,6 @@ def plot_cellstring_delta(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
         print("No LineString length data found in the report; skipping Execution time vs. LineString length plot.")
         return
 
-
     rows: List[Dict[str, Any]] = []
 
     def _collect_samples(samples: List[Dict[str, Any]], series: str, bench_name: str) -> None:
@@ -263,6 +284,72 @@ def plot_cellstring_delta(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
     output_path = _next_output_path("cellstring_delta")
     fig.write_image(output_path)
     print(f"Wrote Execution time vs. LineString length plot to {output_path}")
+
+
+def plot_stop_area_exec_time(
+        benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
+) -> None:
+    area_by_stop = _get_stop_area_map(meta)
+    if not area_by_stop:
+        print("No stop area metadata found; skipping stop-area exec-time plot.")
+        return
+
+    rows: List[Dict[str, Any]] = []
+
+    def _add_sample(sample: Dict[str, Any], series:str) -> None:
+        stop_id = sample.get("stop_id")
+        exec_ms = sample.get("exec_ms")
+        if stop_id is None or exec_ms is None:
+            return
+        area_m2 = area_by_stop.get(int(stop_id))
+        if area_m2 is None:
+            return
+        rows.append(
+            {
+                "stop_id": stop_id,
+                "area_m2": area_m2,
+                "exec_ms": exec_ms,
+                "series": series,
+            }
+        )
+
+    for bench in benchmarks:
+        if bench.get("benchmark_type") != "time":
+            continue
+        result = bench.get("result", {})
+        st_samples = result.get("st", {}).get("samples", [])
+        for sample in st_samples:
+            _add_sample(sample, "Polygon")
+        for zoom, zoom_result in result.get("cst_results", {}).items():
+            for sample in zoom_result.get("samples", []):
+                label = zoom or "CellString"
+                _add_sample(sample, label)
+
+    if not rows:
+        print("No stop-area execution data to plot.")
+        return
+
+    df = pd.DataFrame(rows)
+    fig = px.scatter(
+        df,
+        x="area_m2",
+        y="exec_ms",
+        color="series",
+        symbol="series",
+        labels={"area_m2": "Stop area (m²)", "exec_ms": "Execution time (ms)"},
+        log_y=True,
+        log_x=True,
+        trendline="lowess",
+        trendline_options=dict(frac=0.2),
+    )
+    fig.update_layout(
+        width=1000,
+        height=650,
+    )
+    _apply_transparent_theme(fig, legend_horizontal=True)
+    output_path = _next_output_path("stop_area_exec_time")
+    fig.write_image(output_path)
+    print(f"Wrote Stop Area vs Execution Time plot to {output_path}")
 
 
 def plot_exec_time_bars(
@@ -355,6 +442,9 @@ def run_all_graphs(
 
     if wants("cellstring_delta"):
         plot_cellstring_delta(benchmarks, data["meta"])
+
+    if wants("stop_area_exec_time"):
+        plot_stop_area_exec_time(benchmarks, data["meta"])
 
     if wants("exec_time_bars"):
         time_rows = _build_time_rows(data["benchmarks"], length_stats)

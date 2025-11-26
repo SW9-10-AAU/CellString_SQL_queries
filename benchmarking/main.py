@@ -6,7 +6,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
-from typing import Dict
+from typing import Dict, List
 from dotenv import load_dotenv
 from benchmarking.connect import connect_to_db
 from benchmarking.core import (
@@ -159,7 +159,7 @@ def main():
     trajectory_source_table = "prototype2.trajectory_cs"
     stop_source_table = "prototype2.stop_cs"
     trajectory_sample_size = 5
-    stop_sample_size = 30
+    stop_sample_size = 100
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -175,9 +175,11 @@ def main():
         trajectory_ids = []
         stop_ids = []
 
-        traj_linestring_lengths = []
-        stop_linestring_lengths_by_id: Dict[int, float] = {}
-        traj_cellstring_lengths = {zoom: [] for zoom in ZOOM_LEVELS}
+        traj_linestring_lengths: List[float] = []
+        stop_poly_area_size: List[float] = []
+        linestring_lengths_by_id: Dict[int, float] = {}
+        traj_cellstring_lengths: Dict[str, List[int]] = {zoom: [] for zoom in ZOOM_LEVELS}
+        cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
         stop_cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
 
         benchmark_outputs = []
@@ -198,26 +200,34 @@ def main():
 
             if trajectory_ids:
                 cur.execute(
-                    "SELECT ST_Length(ST_Transform(geom, 3857)) "
+                    "SELECT trajectory_id, ST_Length(ST_Transform(geom, 3857)) "
                     "FROM prototype2.trajectory_ls WHERE trajectory_id = ANY(%s)",
                     (trajectory_ids,)
                 )
-                traj_linestring_lengths = [row[0] for row in cur.fetchall() if row[0] is not None]
+                for traj_id, length in cur.fetchall():
+                    if length is None:
+                        continue
+                    traj_linestring_lengths.append(length)
+                    linestring_lengths_by_id[int(traj_id)] = float(length)
 
                 for zoom in ZOOM_LEVELS:
                     cur.execute(
-                        f"SELECT Cardinality(cellstring_{zoom}) "
+                        f"SELECT trajectory_id, Cardinality(cellstring_{zoom}) "
                         f"FROM {trajectory_source_table} WHERE trajectory_id = ANY(%s)",
                         (trajectory_ids,)
                     )
-                    traj_cellstring_lengths[zoom] = [row[0] for row in cur.fetchall() if row[0] is not None]
+                    for traj_id, count in cur.fetchall():
+                        if count is None:
+                            continue
+                        traj_cellstring_lengths[zoom].append(count)
+                        cellstring_lengths[zoom][int(traj_id)] = int(count)
             if stop_ids:
                 cur.execute(
                     "SELECT ST_Area(ST_Transform(geom, 3857)) "
                     "FROM prototype2.stop_poly WHERE stop_id = ANY(%s)",
                     (stop_ids,)
                 )
-                stop_linestring_lengths = [row[0] for row in cur.fetchall() if row[0] is not None]
+                stop_poly_area_size = [row[0] for row in cur.fetchall() if row[0] is not None]
 
                 for zoom in ZOOM_LEVELS:
                     cur.execute(
@@ -241,6 +251,8 @@ def main():
                     result = run_time_benchmark(conn, bench_instance, trajectory_ids=trajectory_ids)
                 elif bench_instance.with_stop_ids:
                     result = run_time_benchmark(conn, bench_instance, stop_ids=stop_ids)
+                else:
+                    result = run_time_benchmark(conn, bench_instance)
                 print_time_result(result)
                 benchmark_outputs.append(
                     {
@@ -264,6 +276,7 @@ def main():
 
         traj_stats_payload = []
         stop_stats_payload = []
+
         if traj_linestring_lengths:
             traj_stats_payload.append(("LineString", traj_linestring_lengths))
         for zoom in ZOOM_LEVELS:
@@ -271,14 +284,17 @@ def main():
             if lengths:
                 traj_stats_payload.append((f"CellString_{zoom}", lengths))
         traj_stats_summary = _print_trajectory_stats(traj_stats_payload, len(trajectory_ids))
-        if stop_linestring_lengths:
-            stop_stats_payload.append(("LineString", stop_linestring_lengths))
+
+        if stop_poly_area_size:
+            stop_stats_payload.append(("LineString", stop_poly_area_size))
         for zoom in ZOOM_LEVELS:
             lengths = stop_cellstring_lengths.get(zoom)
             if lengths:
                 stop_stats_payload.append((f"CellString_{zoom}", lengths))
         stop_stats_summary = _print_stop_stats(stop_stats_payload, len(stop_ids))
+
         all_tables_used = sorted({table for entry in benchmark_outputs for table in entry["tables_used"]})
+
         tested_types = []
         if traj_stats_summary:
             tested_types.extend(entry["label"] for entry in traj_stats_summary)
@@ -304,7 +320,13 @@ def main():
                     zoom: {str(traj_id): count for traj_id, count in counts.items()}
                     for zoom, counts in cellstring_lengths.items()
                     if counts
-                }
+                },
+                "stop_polygon_areas_m2": {
+                    str(stop_id): area for stop_id, area in zip(stop_ids, stop_poly_area_size)
+                },
+                "stop_cardinalities": {
+                    zoom: counts for zoom, counts in stop_cellstring_lengths.items() if counts
+                },
             },
             "benchmarks": benchmark_outputs,
         }
