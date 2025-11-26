@@ -6,6 +6,7 @@ from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from statistics import median
+from typing import Dict
 from dotenv import load_dotenv
 from benchmarking.connect import connect_to_db
 from benchmarking.core import (
@@ -115,11 +116,14 @@ def _fetch_random_ids(cur, column_name, table_name, sample_size):
 
 
 def _serialize_run_outcome(run: RunOutcome) -> dict:
-    return {
+    payload = {
         "exec_ms_med": run.exec_ms_med,
         "wall_ms_med": run.wall_ms_med,
         "timed_out": run.timed_out,
     }
+    if run.samples:
+        payload["samples"] = run.samples
+    return payload
 
 
 def _serialize_time_result(result: TimeBenchmarkResult) -> dict:
@@ -163,15 +167,18 @@ def main():
 
     run_started_at = datetime.now(timezone.utc)
 
+    if not RUN_PLAN:
+        print("No benchmarks defined in RUN_PLAN. Exiting.")
+        return
     conn = connect_to_db()
     try:
         trajectory_ids = []
         stop_ids = []
 
         traj_linestring_lengths = []
-        stop_linestring_lengths = []
+        stop_linestring_lengths_by_id: Dict[int, float] = {}
         traj_cellstring_lengths = {zoom: [] for zoom in ZOOM_LEVELS}
-        stop_cellstring_lengths = {zoom: [] for zoom in ZOOM_LEVELS}
+        stop_cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
 
         benchmark_outputs = []
 
@@ -290,6 +297,11 @@ def main():
                 "stop_stats": stop_stats_summary,
                 "tested_types": tested_types,
                 "tables_used": all_tables_used,
+                "trajectory_cardinalities": {
+                    zoom: {str(traj_id): count for traj_id, count in counts.items()}
+                    for zoom, counts in cellstring_lengths.items()
+                    if counts
+                }
             },
             "benchmarks": benchmark_outputs,
         }

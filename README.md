@@ -1,6 +1,11 @@
 # CellString_SQL_queries
 Specific types of queries using CellString
 
+## Graphs
+To create any graphs, it requires a generated JSON from benchmarks.
+1. Create all graphs with `python -m benchmarking.graphs.graph_generation` to generate graphs.
+2. Create graphs from a specific JSON file with `python -m benchmarking.graphs.graph_generation benchmarking/benchmark_results/run_xxxxxxxx_xxxxxx.json`
+3. Create graphs for a specific benchmark only with `python -m benchmarking.graphs.graph_generation --benchmark="Find trajectories that intersects another trajectory"`
 
 ## Benchmarking CellString SQL Queries
 

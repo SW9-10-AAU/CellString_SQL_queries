@@ -35,6 +35,7 @@ class RunOutcome:
     wall_ms_med: float
     rows: List[Tuple]
     timed_out: bool = False
+    samples: List[Dict[str, Any]] = field(default_factory=list)
 
 
 @dataclass
@@ -97,6 +98,7 @@ def _aggregate_runs(runs: List[RunOutcome], rows: List[Tuple]) -> RunOutcome:
         exec_ms_med=_median_or_zero(r.exec_ms_med for r in runs),
         wall_ms_med=_median_or_zero(r.wall_ms_med for r in runs),
         rows=rows,
+        samples=[sample for run in runs for sample in run.samples],
     )
 
 
@@ -113,6 +115,7 @@ def _execute_random_or_repeated_queries(
         timeout_seconds: int | None,
         trajectory_ids: List[int] | None = None,
         stop_ids: List[int] | None = None,
+        sample_label: str | None = None,
 ) -> RunOutcome:
     if trajectory_ids is not None and not trajectory_ids:
         return RunOutcome(0.0, 0.0, [])
@@ -120,6 +123,7 @@ def _execute_random_or_repeated_queries(
     exec_times: List[float] = []
     wall_times: List[float] = []
     collected_rows: List[Tuple] = []
+    sample_records: List[Dict[str, Any]] = []
 
     try:
         if trajectory_ids is not None:
@@ -133,6 +137,10 @@ def _execute_random_or_repeated_queries(
                 exec_times.append(exec_ms)
                 wall_times.append(wall_ms)
                 collected_rows.extend(rows)
+                sample = {"trajectory_id": trajectory_id, "exec_ms": exec_ms}
+                if sample_label:
+                    sample["label"] = sample_label
+                sample_records.append(sample)
         elif stop_ids is not None:
             first_params = (stop_ids[0],) + params
             _warmup(cur, sql, first_params, timeout_seconds)
@@ -144,6 +152,10 @@ def _execute_random_or_repeated_queries(
                 exec_times.append(exec_ms)
                 wall_times.append(wall_ms)
                 collected_rows.extend(rows)
+                sample = {"stop_id": stop_id, "exec_ms": exec_ms}
+                if sample_label:
+                    sample["label"] = sample_label
+                sample_records.append(sample)
         else:
             _warmup(cur, sql, params, timeout_seconds)
             rows, wall_ms = _fetch_all_with_wall_ms(cur, sql, params, timeout_seconds)
@@ -154,7 +166,7 @@ def _execute_random_or_repeated_queries(
                 exec_times.append(exec_ms)
 
         _discard_and_set(cur)
-        return RunOutcome(_median_or_zero(exec_times), _median_or_zero(wall_times), collected_rows)
+        return RunOutcome(_median_or_zero(exec_times), _median_or_zero(wall_times), collected_rows, samples=sample_records)
     except Exception as exc:
         if timeout_seconds is None:
             raise
@@ -211,7 +223,8 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
                 bench.st_sql,
                 bench.params,
                 timeout_seconds=bench.timeout_seconds,
-                trajectory_ids=trajectory_ids
+                trajectory_ids=trajectory_ids,
+                sample_label="ST_",
             )
             cst_results = {}
             for zoom in bench.zoom_levels:
@@ -221,7 +234,27 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
                     sql,
                     bench.params,
                     timeout_seconds=bench.timeout_seconds,
-                    trajectory_ids=trajectory_ids
+                    trajectory_ids=trajectory_ids,
+                    sample_label=f"CST_{zoom}",
+                )
+        elif bench.with_stop_ids:
+            st_out = _execute_random_or_repeated_queries(
+                cur,
+                bench.st_sql,
+                bench.params,
+                timeout_seconds=bench.timeout_seconds,
+                stop_ids=stop_ids
+            )
+            cst_results = {}
+            for zoom in bench.zoom_levels:
+                sql = bench.cst_sql.format(zoom=zoom)
+                cst_results[zoom] = _execute_random_or_repeated_queries(
+                    cur,
+                    sql,
+                    bench.params,
+                    timeout_seconds=bench.timeout_seconds,
+                    stop_ids=stop_ids,
+                    sample_label=f"CST_{zoom}",
                 )
         elif bench.with_stop_ids:
             st_out = _execute_random_or_repeated_queries(
