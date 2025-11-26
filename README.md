@@ -6,6 +6,7 @@ To create any graphs, it requires a generated JSON from benchmarks.
 1. Create all graphs with `python -m benchmarking.graphs.graph_generation` to generate graphs.
 2. Create graphs from a specific JSON file with `python -m benchmarking.graphs.graph_generation benchmarking/benchmark_results/run_xxxxxxxx_xxxxxx.json`
 3. Create graphs for a specific benchmark only with `python -m benchmarking.graphs.graph_generation --benchmark="Find trajectories that intersects another trajectory"`
+4. Create a specific graph type only with `python -m benchmarking.graphs.graph_generation --plot=cellstring_delta`
 
 ## Benchmarking CellString SQL Queries
 

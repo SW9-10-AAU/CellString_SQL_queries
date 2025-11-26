@@ -23,7 +23,7 @@ WHERE trajA.trajectory_id <> trajB.trajectory_id
 """
 
 BENCHMARK = TimeBenchmark(
-    name="Find trajectories that intersects another trajectory",
+    name="Find trajectories that intersects another trajectory - Bresenham",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
     with_trajectory_ids=True,

@@ -141,7 +141,7 @@ def main():
         benchmark_outputs = []
 
         with conn.cursor() as cur:
-            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 50")
+            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 100")
             trajectory_ids = [row[0] for row in cur.fetchall()]
 
             if trajectory_ids:
@@ -218,6 +218,9 @@ def main():
                 "trajectory_stats": stats_summary,
                 "tested_types": [entry["label"] for entry in stats_summary],
                 "tables_used": all_tables_used,
+                "trajectory_linestring_lengths_m": {
+                    str(traj_id): length for traj_id, length in linestring_lengths_by_id.items()
+                },
                 "trajectory_cardinalities": {
                     zoom: {str(traj_id): count for traj_id, count in counts.items()}
                     for zoom, counts in cellstring_lengths.items()
