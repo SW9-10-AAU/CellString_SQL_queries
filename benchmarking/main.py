@@ -53,16 +53,33 @@ def _build_length_stats(stat_entries):
         )
     return stats
 
+
 def _print_trajectory_stats(stat_entries, sample_size):
-    stats = _build_length_stats(stat_entries)
-    if not stats:
+    if not stat_entries:
+        print("\nNo trajectory statistics available.")
         return []
+    stats = _build_length_stats(stat_entries)
     print(f"\n{sample_size} trajectory statistics:")
     for entry in stats:
         print(
             f"{entry['label']}: Min length: {entry['min']}, "
             f"Median length: {entry['median']}, "
             f"Max length: {entry['max']}"
+        )
+    return stats
+
+
+def _print_stop_stats(stat_entries, sample_size):
+    if not stat_entries:
+        print("\nNo stop statistics available.")
+        return []
+    stats = _build_length_stats(stat_entries)
+    print(f"\n{sample_size} stop statistics:")
+    for entry in stats:
+        print(
+            f"{entry['label']}: Min size: {entry['min']}, "
+            f"Median size: {entry['median']}, "
+            f"Max size: {entry['max']}"
         )
     return stats
 
@@ -84,6 +101,20 @@ def _collect_tables_from_benchmark(benchmark):
     return []
 
 
+def _fetch_random_ids(cur, column_name, table_name, sample_size):
+    if sample_size <= 0:
+        return []
+    if not re.fullmatch(r"[A-Za-z0-9_]+", column_name):
+        raise ValueError(f"Invalid column name: {column_name}")
+    if not re.fullmatch(r"[A-Za-z0-9_.]+", table_name):
+        raise ValueError(f"Invalid table name: {table_name}")
+    cur.execute(
+        f"SELECT {column_name} FROM {table_name} ORDER BY random() LIMIT %s",
+        (sample_size,)
+    )
+    return [row[0] for row in cur.fetchall()]
+
+
 def _serialize_run_outcome(run: RunOutcome) -> dict:
     payload = {
         "exec_ms_med": run.exec_ms_med,
@@ -93,6 +124,7 @@ def _serialize_run_outcome(run: RunOutcome) -> dict:
     if run.samples:
         payload["samples"] = run.samples
     return payload
+
 
 def _serialize_time_result(result: TimeBenchmarkResult) -> dict:
     return {
@@ -124,6 +156,11 @@ def _write_json_report(payload: dict, run_started_at: datetime) -> Path:
 
 def main():
     load_dotenv()
+    trajectory_source_table = "prototype2.trajectory_cs"
+    stop_source_table = "prototype2.stop_cs"
+    trajectory_sample_size = 5
+    stop_sample_size = 30
+
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
         sys.exit("DATABASE_URL not defined in .env file")
@@ -136,36 +173,59 @@ def main():
     conn = connect_to_db()
     try:
         trajectory_ids = []
-        linestring_lengths_by_id: Dict[int, float] = {}
-        cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
+        stop_ids = []
+
+        traj_linestring_lengths = []
+        stop_linestring_lengths_by_id: Dict[int, float] = {}
+        traj_cellstring_lengths = {zoom: [] for zoom in ZOOM_LEVELS}
+        stop_cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
+
         benchmark_outputs = []
 
         with conn.cursor() as cur:
-            cur.execute("SELECT trajectory_id FROM prototype2.trajectory_ls ORDER BY random() LIMIT 50")
-            trajectory_ids = [row[0] for row in cur.fetchall()]
+            trajectory_ids = _fetch_random_ids(
+                cur,
+                "trajectory_id",
+                trajectory_source_table,
+                trajectory_sample_size,
+            )
+            stop_ids = _fetch_random_ids(
+                cur,
+                "stop_id",
+                stop_source_table,
+                stop_sample_size,
+            )
 
             if trajectory_ids:
                 cur.execute(
-                    "SELECT trajectory_id, ST_Length(ST_Transform(geom, 3857)) FROM prototype2.trajectory_ls WHERE trajectory_id = ANY(%s)",
+                    "SELECT ST_Length(ST_Transform(geom, 3857)) "
+                    "FROM prototype2.trajectory_ls WHERE trajectory_id = ANY(%s)",
                     (trajectory_ids,)
                 )
-                linestring_lengths_by_id = {
-                    int(row[0]): row[1]
-                    for row in cur.fetchall()
-                    if row[0] is not None and row[1] is not None
-                }
+                traj_linestring_lengths = [row[0] for row in cur.fetchall() if row[0] is not None]
 
                 for zoom in ZOOM_LEVELS:
                     cur.execute(
-                        f"SELECT trajectory_id, Cardinality(cellstring_{zoom}) "
-                        "FROM prototype2.trajectory_cs WHERE trajectory_id = ANY(%s)",
+                        f"SELECT Cardinality(cellstring_{zoom}) "
+                        f"FROM {trajectory_source_table} WHERE trajectory_id = ANY(%s)",
                         (trajectory_ids,)
                     )
-                    cellstring_lengths[zoom] = {
-                        int(row[0]): row[1]
-                        for row in cur.fetchall()
-                        if row[0] is not None and row[1] is not None
-                    }
+                    traj_cellstring_lengths[zoom] = [row[0] for row in cur.fetchall() if row[0] is not None]
+            if stop_ids:
+                cur.execute(
+                    "SELECT ST_Area(ST_Transform(geom, 3857)) "
+                    "FROM prototype2.stop_poly WHERE stop_id = ANY(%s)",
+                    (stop_ids,)
+                )
+                stop_linestring_lengths = [row[0] for row in cur.fetchall() if row[0] is not None]
+
+                for zoom in ZOOM_LEVELS:
+                    cur.execute(
+                        f"SELECT Cardinality(cellstring_{zoom}) "
+                        f"FROM {stop_source_table} WHERE stop_id = ANY(%s)",
+                        (stop_ids,)
+                    )
+                    stop_cellstring_lengths[zoom] = [row[0] for row in cur.fetchall() if row[0] is not None]
 
         for benchmark in RUN_PLAN:
             bench_instance = benchmark
@@ -177,7 +237,10 @@ def main():
             tables_used = _collect_tables_from_benchmark(bench_instance)
 
             if isinstance(bench_instance, TimeBenchmark):
-                result = run_time_benchmark(conn, bench_instance, trajectory_ids)
+                if bench_instance.with_trajectory_ids:
+                    result = run_time_benchmark(conn, bench_instance, trajectory_ids=trajectory_ids)
+                elif bench_instance.with_stop_ids:
+                    result = run_time_benchmark(conn, bench_instance, stop_ids=stop_ids)
                 print_time_result(result)
                 benchmark_outputs.append(
                     {
@@ -199,24 +262,40 @@ def main():
                     }
                 )
 
-        stats_payload = []
-        if linestring_lengths_by_id:
-            stats_payload.append(("LineString", list(linestring_lengths_by_id.values())))
+        traj_stats_payload = []
+        stop_stats_payload = []
+        if traj_linestring_lengths:
+            traj_stats_payload.append(("LineString", traj_linestring_lengths))
         for zoom in ZOOM_LEVELS:
-            lengths = list(cellstring_lengths.get(zoom, {}).values())
+            lengths = traj_cellstring_lengths.get(zoom)
             if lengths:
-                stats_payload.append((f"CellString_{zoom}", lengths))
-        stats_summary = _print_trajectory_stats(stats_payload, len(trajectory_ids))
+                traj_stats_payload.append((f"CellString_{zoom}", lengths))
+        traj_stats_summary = _print_trajectory_stats(traj_stats_payload, len(trajectory_ids))
+        if stop_linestring_lengths:
+            stop_stats_payload.append(("LineString", stop_linestring_lengths))
+        for zoom in ZOOM_LEVELS:
+            lengths = stop_cellstring_lengths.get(zoom)
+            if lengths:
+                stop_stats_payload.append((f"CellString_{zoom}", lengths))
+        stop_stats_summary = _print_stop_stats(stop_stats_payload, len(stop_ids))
         all_tables_used = sorted({table for entry in benchmark_outputs for table in entry["tables_used"]})
+        tested_types = []
+        if traj_stats_summary:
+            tested_types.extend(entry["label"] for entry in traj_stats_summary)
+        if stop_stats_summary:
+            tested_types.extend(entry["label"] for entry in stop_stats_summary)
 
         report = {
             "meta": {
                 "run_started_at": run_started_at.isoformat(),
                 "trajectory_count": len(trajectory_ids),
                 "trajectory_ids": trajectory_ids,
+                "stop_count": len(stop_ids),
+                "stop_ids": stop_ids,
                 "zoom_levels": ZOOM_LEVELS,
-                "trajectory_stats": stats_summary,
-                "tested_types": [entry["label"] for entry in stats_summary],
+                "trajectory_stats": traj_stats_summary,
+                "stop_stats": stop_stats_summary,
+                "tested_types": tested_types,
                 "tables_used": all_tables_used,
                 "trajectory_cardinalities": {
                     zoom: {str(traj_id): count for traj_id, count in counts.items()}

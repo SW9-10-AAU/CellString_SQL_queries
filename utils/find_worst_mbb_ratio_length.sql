@@ -1,4 +1,5 @@
 SELECT
+    mmsi,
     trajectory_id,
     ST_Area(ST_Transform(ST_Envelope(geom), 3857)) AS mbr_area,
     ST_Length(ST_Transform(geom, 3857)) AS traj_length,

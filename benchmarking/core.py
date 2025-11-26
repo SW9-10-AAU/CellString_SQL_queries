@@ -15,6 +15,7 @@ class TimeBenchmark:
     params: Tuple[Any, ...] = tuple()
     repeats: int = 5
     with_trajectory_ids: bool = False
+    with_stop_ids: bool = False
     zoom_levels: List[str] = field(default_factory=list)
     area_ids: List[int] = field(default_factory=list)
     use_area_ids: bool = False
@@ -113,6 +114,7 @@ def _execute_random_or_repeated_queries(
         repeats: int | None = None,
         timeout_seconds: int | None,
         trajectory_ids: List[int] | None = None,
+        stop_ids: List[int] | None = None,
         sample_label: str | None = None,
 ) -> RunOutcome:
     if trajectory_ids is not None and not trajectory_ids:
@@ -136,6 +138,21 @@ def _execute_random_or_repeated_queries(
                 wall_times.append(wall_ms)
                 collected_rows.extend(rows)
                 sample = {"trajectory_id": trajectory_id, "exec_ms": exec_ms}
+                if sample_label:
+                    sample["label"] = sample_label
+                sample_records.append(sample)
+        elif stop_ids is not None:
+            first_params = (stop_ids[0],) + params
+            _warmup(cur, sql, first_params, timeout_seconds)
+
+            for stop_id in stop_ids:
+                current_params = (stop_id,) + params
+                rows, wall_ms = _fetch_all_with_wall_ms(cur, sql, current_params, timeout_seconds)
+                _, exec_ms = _explain_analyze_ms(cur, sql, current_params)
+                exec_times.append(exec_ms)
+                wall_times.append(wall_ms)
+                collected_rows.extend(rows)
+                sample = {"stop_id": stop_id, "exec_ms": exec_ms}
                 if sample_label:
                     sample["label"] = sample_label
                 sample_records.append(sample)
@@ -164,7 +181,7 @@ def _execute_random_or_repeated_queries(
         raise
 
 
-def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[int]) -> TimeBenchmarkResult:
+def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[int] | None = None, stop_ids: List[int] | None = None) -> TimeBenchmarkResult:
     connection.autocommit = True
     connection.prepare_threshold = None
     per_area_results: Dict[int, Dict[str, RunOutcome]] = {}
@@ -219,6 +236,43 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
                     timeout_seconds=bench.timeout_seconds,
                     trajectory_ids=trajectory_ids,
                     sample_label=f"CST_{zoom}",
+                )
+        elif bench.with_stop_ids:
+            st_out = _execute_random_or_repeated_queries(
+                cur,
+                bench.st_sql,
+                bench.params,
+                timeout_seconds=bench.timeout_seconds,
+                stop_ids=stop_ids
+            )
+            cst_results = {}
+            for zoom in bench.zoom_levels:
+                sql = bench.cst_sql.format(zoom=zoom)
+                cst_results[zoom] = _execute_random_or_repeated_queries(
+                    cur,
+                    sql,
+                    bench.params,
+                    timeout_seconds=bench.timeout_seconds,
+                    stop_ids=stop_ids,
+                    sample_label=f"CST_{zoom}",
+                )
+        elif bench.with_stop_ids:
+            st_out = _execute_random_or_repeated_queries(
+                cur,
+                bench.st_sql,
+                bench.params,
+                timeout_seconds=bench.timeout_seconds,
+                stop_ids=stop_ids
+            )
+            cst_results = {}
+            for zoom in bench.zoom_levels:
+                sql = bench.cst_sql.format(zoom=zoom)
+                cst_results[zoom] = _execute_random_or_repeated_queries(
+                    cur,
+                    sql,
+                    bench.params,
+                    timeout_seconds=bench.timeout_seconds,
+                    stop_ids=stop_ids
                 )
         else:
             st_out = _execute_random_or_repeated_queries(
