@@ -50,7 +50,7 @@ trajectory AS (
         trajectory_id,
         NULL::bigint AS stop_id,
         mmsi,
-        draw_cellstring(cellstring_z21, 21),
+        CST_AsMultiPolygon(cellstring_z21, 21),
         ts_start,
         ts_end
     FROM prototype2.trajectory_supercover_cs, vars
@@ -62,7 +62,7 @@ stop AS (
         NULL::bigint AS trajectory_id,
         stop_id,
         mmsi,
-        draw_cellstring(cellstring_z21, 21),
+        CST_AsMultiPolygon(cellstring_z21, 21),
         ts_start,
         ts_end
     FROM prototype2.stop_cs, vars

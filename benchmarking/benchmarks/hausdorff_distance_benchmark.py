@@ -2,7 +2,7 @@ from benchmarking.core import ValueBenchmark
 
 SQL = """
 SELECT
-    cst_hausdorffdistance(cs.cellstring_{zoom}, ls.geom, {zoom_level})
+    CST_HausdorffDistance(cs.cellstring_{zoom}, ls.geom, {zoom_level})
 FROM prototype2.trajectory_ls ls
 JOIN prototype2.trajectory_cs cs
     ON ls.trajectory_id = cs.trajectory_id

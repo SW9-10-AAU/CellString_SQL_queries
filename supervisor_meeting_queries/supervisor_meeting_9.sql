@@ -27,9 +27,9 @@ SELECT
     ls.trajectory_id,
     ls.mmsi,
     ls.geom AS trajectory_geom,
-    draw_cellstring(cs.cellstring_z13, 13) AS cells_z13,
-    draw_cellstring(cs.cellstring_z17, 17) AS cells_z17,
-    draw_cellstring(cs.cellstring_z21, 21) AS cells_z21
+    CST_AsMultiPolygon(cs.cellstring_z13, 13) AS cells_z13,
+    CST_AsMultiPolygon(cs.cellstring_z17, 17) AS cells_z17,
+    CST_AsMultiPolygon(cs.cellstring_z21, 21) AS cells_z21
 FROM prototype2.trajectory_ls ls
 JOIN prototype2.trajectory_supercover_cs cs
     ON ls.trajectory_id = cs.trajectory_id
@@ -40,9 +40,9 @@ SELECT
     ls.stop_id,
     ls.mmsi,
     ls.geom AS trajectory_geom,
-    draw_cellstring(cs.cellstring_z13, 13) AS cells_z13,
-    draw_cellstring(cs.cellstring_z17, 17) AS cells_z17,
-    draw_cellstring(cs.cellstring_z21, 21) AS cells_z21
+    CST_AsMultiPolygon(cs.cellstring_z13, 13) AS cells_z13,
+    CST_AsMultiPolygon(cs.cellstring_z17, 17) AS cells_z17,
+    CST_AsMultiPolygon(cs.cellstring_z21, 21) AS cells_z21
 FROM prototype2.stop_poly ls
 JOIN prototype2.stop_cs cs
     ON ls.stop_id = cs.stop_id

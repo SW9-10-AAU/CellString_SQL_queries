@@ -64,7 +64,7 @@ If either `with_trajectory_ids` or `use_area_ids` is set to True, the benchmark 
 ```python
 SQL = """
 SELECT
-    cst_hausdorffdistance(cs.cellstring_{zoom}, ls.geom, {zoom_level})
+    CST_HausdorffDistance(cs.cellstring_{zoom}, ls.geom, {zoom_level})
 FROM prototype2.trajectory_ls ls
 JOIN prototype2.trajectory_cs cs
     ON ls.trajectory_id = cs.trajectory_id
