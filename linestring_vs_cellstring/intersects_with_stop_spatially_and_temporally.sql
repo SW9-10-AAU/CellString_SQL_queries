@@ -85,7 +85,7 @@ SELECT
     NULL::bigint AS trajectory_id,
     r.stop_id,
 --     r.ref_cellstring AS cellstring,
---     draw_cellstring(r.ref_cellstring,21) AS cellstring_geom,
+--     CST_AsMultiPolygon(r.ref_cellstring,21) AS cellstring_geom,
     NULL::double precision AS overlap_minutes
 FROM ref r
 
@@ -98,7 +98,7 @@ SELECT DISTINCT
     t.trajectory_id,
     NULL::bigint AS stop_id,
 --     t.cellstring_z21 AS cellstring,
---     draw_cellstring(t.cellstring_z21,21) AS cellstring_geom,
+--     CST_AsMultiPolygon(t.cellstring_z21,21) AS cellstring_geom,
     ROUND(EXTRACT(
         EPOCH FROM (
             LEAST(t.ts_end,   r.ref_end)
@@ -121,7 +121,7 @@ SELECT DISTINCT
     NULL::bigint AS trajectory_id,
     s.stop_id,
 --     s.cellstring_z21 AS cellstring,
---     draw_cellstring(s.cellstring_z21,21) AS cellstring_geom,
+--     CST_AsMultiPolygon(s.cellstring_z21,21) AS cellstring_geom,
     ROUND(EXTRACT(
         EPOCH FROM (
             LEAST(s.ts_end,   r.ref_end)
