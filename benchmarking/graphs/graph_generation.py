@@ -160,7 +160,7 @@ def _build_sample_rows(
     return rows
 
 
-def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with_bar_text: Optional[bool] = None) -> None:
+def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with_bar_text: Optional[bool] = None, left_legend: Optional[bool] = None) -> None:
     fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
@@ -196,12 +196,12 @@ def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with
     if with_bar_text:
         fig.update_traces(
             marker=dict(line_color="grey", pattern_fillmode="replace"),
-            textfont_size=15,
+            textfont_size=20,
             textangle=0,
             textposition="outside",
             cliponaxis=False,
         )
-    if legend_horizontal is None:
+    if legend_horizontal is None and left_legend is None:
         fig.update_layout(
             legend=dict(
                 yanchor="top",
@@ -209,6 +209,15 @@ def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with
                 xanchor="right",
                 x=0.98,
             )
+        )
+    elif legend_horizontal is None and left_legend:
+        fig.update_layout(
+            legend=dict(
+                yanchor="top",
+                y=0.98,
+                xanchor="left",
+                x=0.02,
+            ),
         )
     else:
         fig.update_layout(
@@ -424,6 +433,58 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
     print(f"Wrote False Match Counts plot to {output_path}")
 
 
+def plot_crossing_via_exec_times(
+        benchmarks: List[Dict[str, Any]],
+        zoom_order: Optional[List[str]] = None,
+        label_prefix: str = "Crossing via ",
+) -> None:
+    zooms = zoom_order or ["z13", "z17", "z21"]
+    rows: List[Dict[str, Any]] = []
+
+    for bench in benchmarks:
+        name = bench.get("name", "")
+        if not name.startswith(label_prefix) or bench.get("benchmark_type") != "time":
+            continue
+        route = name.replace("name", "")
+        result = bench.get("result", {})
+        st_exec = result.get("st", {}).get("exec_ms_med")
+        if st_exec is not None:
+            rows.append({"route": route, "series": "LineString", "exec_ms": st_exec})
+        for zoom in zooms:
+            cst = result.get("cst_results", {}).get(zoom)
+            if not cst:
+                continue
+            exec_ms = cst.get("exec_ms_med")
+            if exec_ms is None:
+                continue
+            rows.append({"route": route, "series": zoom, "exec_ms": exec_ms})
+
+    if not rows:
+        print("No crossing via benchmark data found; skipping plot.")
+        return
+
+    df = pd.DataFrame(rows)
+    fig = px.bar(
+        df,
+        x="route",
+        y="exec_ms",
+        color="series",
+        barmode="group",
+        labels={"route": "Route", "exec_ms": "Execution time (ms)", "series": "Variant"},
+        log_y=True,
+        pattern_shape="series",
+        text_auto='.3s',
+    )
+    fig.update_layout(
+        width=1000,
+        height=650,
+    ),
+    _apply_transparent_theme(fig, with_bar_text=True, left_legend=True)
+    output_path = _next_output_path("crossing_via_exec_times")
+    fig.write_image(output_path)
+    print(f"Wrote Crossing Via Execution Times bar-plot to {output_path}")
+
+
 def run_all_graphs(
         report_path: Path,
         selected_benchmarks: Optional[List[str]] = None,
@@ -452,6 +513,9 @@ def run_all_graphs(
 
     if wants("false_match_counts"):
         plot_false_match_counts(benchmarks)
+
+    if wants("crossing_via_exec_times"):
+        plot_crossing_via_exec_times(benchmarks)
 
 
 def main(

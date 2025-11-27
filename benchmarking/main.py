@@ -158,8 +158,8 @@ def main():
     load_dotenv()
     trajectory_source_table = "prototype2.trajectory_cs"
     stop_source_table = "prototype2.stop_cs"
-    trajectory_sample_size = 5
-    stop_sample_size = 100
+    trajectory_sample_size = 500
+    stop_sample_size = 500
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
