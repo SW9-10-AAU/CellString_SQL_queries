@@ -263,7 +263,7 @@ def main():
                     }
                 )
             elif isinstance(bench_instance, ValueBenchmark):
-                result = run_value_benchmark(conn, bench_instance, trajectory_ids)
+                result = run_value_benchmark(conn, bench_instance, trajectory_ids, stop_ids)
                 print_value_result(result)
                 benchmark_outputs.append(
                     {

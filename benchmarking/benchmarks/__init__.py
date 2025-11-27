@@ -4,12 +4,8 @@ from .intersects_traj_benchmark_supercover import BENCHMARK as intersects_traj_b
 from .hausdorff_distance_benchmark import BENCHMARK as hausdorff_distance_benchmark
 from .intersects_with_stop_spatially_and_temporally import BENCHMARK as intersects_with_stop_spatially_and_temporally_benchmark
 from .via_query_benchmark import CROSSING_VIA_BENCHMARKS
+from .linestring_containment_benchmark import LINESTRING_CONTAINMENT_BENCHMARKS
 
 RUN_PLAN = [
-    intersects_area_benchmark,
-    intersects_traj_benchmark_bresenham,
-    intersects_traj_benchmark_supercover,
-    hausdorff_distance_benchmark,
-    intersects_with_stop_spatially_and_temporally_benchmark,
-    *CROSSING_VIA_BENCHMARKS,
+    *LINESTRING_CONTAINMENT_BENCHMARKS,
 ]

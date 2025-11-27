@@ -433,6 +433,59 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
     print(f"Wrote False Match Counts plot to {output_path}")
 
 
+def plot_linestring_containment_pct(benchmarks: List[Dict[str, Any]]) -> None:
+    zooms = ["z13", "z17", "z21"]
+    rows: List[Dict[str, Any]] = []
+
+    for bench in benchmarks:
+        if bench.get("benchmark_type") != "value":
+            continue
+        name = bench.get("name", "")
+        if "LineString containment vs CellString" not in name:
+            continue
+        variant = "Bresenham" if "Bresenham" in name else "Supercover" if "Supercover" in name else "Unknown"
+        values = bench.get("result", {}).get("median_values", {})
+        for zoom in zooms:
+            pct = values.get(f"{zoom}_not_contained_pct")
+            if pct is None:
+                continue
+            rows.append(
+                {
+                    "zoom": zoom,
+                    "variant": variant,
+                    "percentage": pct,
+                }
+            )
+    if not rows:
+        print("No LineString containment benchmark data found; skipping plot.")
+        return
+
+    df = pd.DataFrame(rows)
+    fig = px.bar(
+        df,
+        x="zoom",
+        y="percentage",
+        color="variant",
+        barmode="group",
+        labels={"zoom": "Zoom level", "percentage": "% of trajectories not contained", "variant": "Variant"},
+        pattern_shape="variant",
+        text_auto='.2f',
+    )
+    fig.update_layout(
+        width=700,
+        height=600,
+    )
+    fig.update_yaxes(
+        autorange=False,
+        range=[0,100],
+    )
+    _apply_transparent_theme(fig, with_bar_text=True, left_legend=True)
+    output_path = _next_output_path("linestring_containment_pct")
+    fig.write_image(output_path)
+    print(f"Wrote LineString containment percentage bar-plot to {output_path}")
+
+
+
 def plot_crossing_via_exec_times(
         benchmarks: List[Dict[str, Any]],
         zoom_order: Optional[List[str]] = None,
@@ -478,7 +531,7 @@ def plot_crossing_via_exec_times(
     fig.update_layout(
         width=1000,
         height=650,
-    ),
+    )
     _apply_transparent_theme(fig, with_bar_text=True, left_legend=True)
     output_path = _next_output_path("crossing_via_exec_times")
     fig.write_image(output_path)
@@ -513,6 +566,9 @@ def run_all_graphs(
 
     if wants("false_match_counts"):
         plot_false_match_counts(benchmarks)
+
+    if wants("linestring_containment_pct"):
+        plot_linestring_containment_pct(benchmarks)
 
     if wants("crossing_via_exec_times"):
         plot_crossing_via_exec_times(benchmarks)

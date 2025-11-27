@@ -4,7 +4,7 @@ import json
 import time
 from dataclasses import dataclass, field
 from statistics import median
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -27,6 +27,8 @@ class ValueBenchmark:
     name: str
     sql: str
     zoom_levels: List[str] = field(default_factory=list)
+    with_trajectory_ids: bool = False
+    with_stop_ids: bool = False
 
 
 @dataclass
@@ -301,23 +303,71 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
     return TimeBenchmarkResult(bench.name, st_out, cst_results, false_positives, false_negatives, per_area_results,)
 
 
-def run_value_benchmark(connection, bench: ValueBenchmark, trajectory_ids: List[int]) -> ValueBenchmarkResult:
+def run_value_benchmark(
+        connection,
+        bench: ValueBenchmark,
+        trajectory_ids: Optional[List[int]] = None,
+        stop_ids: Optional[List[int]] = None,
+) -> ValueBenchmarkResult:
     connection.autocommit = True
     connection.prepare_threshold = None
+    trajectory_ids = trajectory_ids or []
+    stop_ids = stop_ids or []
     median_values: Dict[str, float] = {}
 
     with connection.cursor() as cur:
-        for zoom in bench.zoom_levels:
-            zoom_level_int = int(zoom.replace('z', ''))
-            sql = bench.sql.format(zoom=zoom, zoom_level=zoom_level_int)
-            values = []
-            for trajectory_id in trajectory_ids:
-                cur.execute(sql, (trajectory_id,))
-                row = cur.fetchone()
-                if row and row[0] is not None:
-                    values.append(row[0])
-            if values:
-                median_values[zoom] = median(values)
+        if bench.zoom_levels:
+            for zoom in bench.zoom_levels:
+                zoom_level_int = int(zoom.replace("z", "")) if zoom else 0
+                sql = bench.sql.format(zoom=zoom, zoom_level=zoom_level_int)
+                values: List[float] = []
+
+                if bench.with_trajectory_ids:
+                    if not trajectory_ids:
+                        continue
+                    for trajectory_id in trajectory_ids:
+                        cur.execute(sql, (trajectory_id,))
+                        row = cur.fetchone()
+                        if row and row[0] is not None:
+                            values.append(float(row[0]))
+                elif bench.with_stop_ids:
+                    if not stop_ids:
+                        continue
+                    for stop_id in stop_ids:
+                        cur.execute(sql, (stop_id,))
+                        row = cur.fetchone()
+                        if row and row[0] is not None:
+                            values.append(float(row[0]))
+                else:
+                    cur.execute(sql)
+                    rows = cur.fetchall()
+                    values.extend(float(row[0]) for row in rows if row and row[0] is not None)
+
+                if values:
+                    median_values[zoom] = median(values)
+        else:
+            params: Any = None
+            if bench.with_trajectory_ids:
+                if not trajectory_ids:
+                    return ValueBenchmarkResult(bench.name, {})
+                params = {"trajectory_ids": trajectory_ids}
+            elif bench.with_stop_ids:
+                if not stop_ids:
+                    return ValueBenchmarkResult(bench.name, {})
+                params = {"stop_ids": stop_ids}
+
+            if params is None:
+                cur.execute(bench.sql)
+            else:
+                cur.execute(bench.sql, params)
+
+            for row in cur.fetchall():
+                if not row or len(row) < 2:
+                    continue
+                label, value = row[0], row[1]
+                if label is None or value is None:
+                    continue
+                median_values[str(label)] = float(value)
 
     return ValueBenchmarkResult(bench.name, median_values)
 
