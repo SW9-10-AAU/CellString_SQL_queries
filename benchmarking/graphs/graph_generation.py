@@ -485,11 +485,10 @@ def plot_linestring_containment_pct(benchmarks: List[Dict[str, Any]]) -> None:
     print(f"Wrote LineString containment percentage bar-plot to {output_path}")
 
 
-
 def plot_crossing_via_exec_times(
         benchmarks: List[Dict[str, Any]],
         zoom_order: Optional[List[str]] = None,
-        label_prefix: str = "Crossing via ",
+        label_prefix: str = "Skagen",
 ) -> None:
     zooms = zoom_order or ["z13", "z17", "z21"]
     rows: List[Dict[str, Any]] = []

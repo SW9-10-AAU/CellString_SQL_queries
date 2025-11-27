@@ -7,5 +7,5 @@ from .via_query_benchmark import CROSSING_VIA_BENCHMARKS
 from .linestring_containment_benchmark import LINESTRING_CONTAINMENT_BENCHMARKS
 
 RUN_PLAN = [
-    *LINESTRING_CONTAINMENT_BENCHMARKS,
+    *CROSSING_VIA_BENCHMARKS,
 ]

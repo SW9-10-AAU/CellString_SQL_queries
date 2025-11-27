@@ -37,7 +37,7 @@ WHERE crossingA.crossing_id = %s
 
 def build_via_benchmark(label: str, crossings: tuple[int, int, int]) -> TimeBenchmark:
     return TimeBenchmark(
-        name=f"Crossing via {label}",
+        name=f"{label}",
         st_sql=ST_SQL,
         cst_sql=CST_SQL,
         params=crossings,

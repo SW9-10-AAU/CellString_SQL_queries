@@ -5109,7 +5109,7 @@
   },
   "benchmarks": [
     {
-      "name": "Crossing via Skagen-Storebælt-Bornholm",
+      "name": "Skagen-Storebælt-Bornholm",
       "benchmark_type": "time",
       "tables_used": [
         "prototype2.trajectory_ls",
@@ -5152,7 +5152,7 @@
       }
     },
     {
-      "name": "Crossing via Skagen-Helsingør-Bornholm",
+      "name": "Skagen-Helsingør-Bornholm",
       "benchmark_type": "time",
       "tables_used": [
         "prototype2.trajectory_ls",
