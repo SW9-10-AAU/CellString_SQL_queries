@@ -1,10 +1,9 @@
 -- Coverage of area (%) by mmsi
-
 SELECT *
 FROM CST_Coverage_ByMMSI(
   'prototype2.trajectory_supercover_cs',
   17,
-  (SELECT cellstring_z17 FROM benchmark.area_cs WHERE area_id = 3)
+  (SELECT cellstring_z17 FROM benchmark.area_cs WHERE name = 'Hanstholm')
 );
 
 
