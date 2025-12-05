@@ -44,10 +44,11 @@ class RunOutcome:
 class TimeBenchmarkResult:
     name: str
     st: RunOutcome
-    cst_results: Dict[str,RunOutcome]
+    cst_results: Dict[str, RunOutcome]
     false_positives: Dict[str, int]
     false_negatives: Dict[str, int]
     per_area_results: Dict[int, Dict[str, RunOutcome]] = field(default_factory=dict)
+    match_counts: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -295,12 +296,27 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
     st_keys = _keyset(st_out.rows)
     false_positives: Dict[str, int] = {}
     false_negatives: Dict[str, int] = {}
+    match_counts: Dict[str, int] = {"LineString": len(st_keys)}
+
     for zoom, cst_out in cst_results.items():
         cst_keys = _keyset(cst_out.rows)
         false_positives[zoom] = len(cst_keys - st_keys)
         false_negatives[zoom] = len(st_keys - cst_keys)
+        match_counts[zoom] = len(cst_keys)
 
-    return TimeBenchmarkResult(bench.name, st_out, cst_results, false_positives, false_negatives, per_area_results,)
+    baseline_count = match_counts["LineString"]
+    false_positives["LineString"] = baseline_count
+    false_negatives["LineString"] = baseline_count
+
+    return TimeBenchmarkResult(
+        bench.name,
+        st_out,
+        cst_results,
+        false_positives,
+        false_negatives,
+        per_area_results,
+        match_counts,
+    )
 
 
 def run_value_benchmark(

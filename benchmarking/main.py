@@ -136,6 +136,7 @@ def _serialize_time_result(result: TimeBenchmarkResult) -> dict:
             str(area_id): {label: _serialize_run_outcome(run) for label, run in runs.items()}
             for area_id, runs in result.per_area_results.items()
         },
+        "match_counts": result.match_counts,
     }
 
 
@@ -158,8 +159,8 @@ def main():
     load_dotenv()
     trajectory_source_table = "prototype2.trajectory_cs"
     stop_source_table = "prototype2.stop_cs"
-    trajectory_sample_size = 500
-    stop_sample_size = 500
+    trajectory_sample_size = 100
+    stop_sample_size = 5
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:

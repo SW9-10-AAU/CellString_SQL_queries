@@ -167,7 +167,8 @@ def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with
         legend_bgcolor="rgba(0,0,0,0)",
         margin=dict(l=60, r=15, t=15, b=60),
         legend_title=dict(text=""),
-        font_size=18,
+        font_size=25,
+        font_weight=550,
         legend_font_size=25,
         legend_font_weight=550,
         legend_itemsizing="constant",
@@ -180,7 +181,7 @@ def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with
         ticks="inside",
         mirror=True,
         minorloglabels="complete",
-        tickfont_size=20,
+        tickfont_size=25,
     )
     fig.update_yaxes(
         showgrid=False,
@@ -190,7 +191,7 @@ def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with
         ticks="inside",
         mirror=True,
         minorloglabels="complete",
-        tickfont_size=20,
+        tickfont_size=25,
         automargin="left",
     )
     if with_bar_text:
@@ -278,6 +279,7 @@ def plot_cellstring_delta(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
         x="length_km",
         y="exec_ms",
         color="series",
+        color_discrete_sequence=px.colors.qualitative.Safe,
         symbol="series",
         labels={"length_km": "LineString length (km)", "exec_ms": "Execution time (ms)", "series": "Data"},
         log_y=True,
@@ -344,6 +346,7 @@ def plot_stop_area_exec_time(
         x="area_m2",
         y="exec_ms",
         color="series",
+        color_discrete_sequence=px.colors.qualitative.Safe,
         symbol="series",
         labels={"area_m2": "Stop area (m²)", "exec_ms": "Execution time (ms)"},
         log_y=True,
@@ -375,21 +378,24 @@ def plot_exec_time_bars(
     for row in time_rows:
         bench = row["benchmark"]
         if not emitted_st.get(bench):
-            bars.append({"benchmark": bench, "series": "ST_", "exec_ms": row["st_exec_ms"]})
+            bars.append({"benchmark": bench, "series": "LineString", "exec_ms": row["st_exec_ms"]})
             emitted_st[bench] = True
-        bars.append({"benchmark": bench, "series": f"CST_{row['zoom']}", "exec_ms": row["cst_exec_ms"]})
+        bars.append({"benchmark": bench, "series": f"{row['zoom']}", "exec_ms": row["cst_exec_ms"]})
     df = pd.DataFrame(bars)
     fig = px.bar(
         df,
         x="series",
         y="exec_ms",
         color="series",
+        color_discrete_sequence=px.colors.qualitative.Safe,
         labels={"exec_ms": "Execution median (ms)", "series": "Data"},
         log_y=True,
         pattern_shape="series",
-        text_auto='.3s',
+        text_auto='.3f',
     )
+    fig.update_traces(texttemplate="%{y:.3f} ms")
     fig.update_layout(
+        showlegend=False
     )
     _apply_transparent_theme(fig, with_bar_text=True)
     output_path = _next_output_path("exec_time_bars")
@@ -398,34 +404,74 @@ def plot_exec_time_bars(
 
 
 def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
-    rows: List[Dict[str, Any]] = []
+    def _normalize_zoom_label(raw_zoom: Optional[str]) -> str:
+        if raw_zoom in (None, "", "LineString", "linestring", "st"):
+            return "LineString"
+        return str(raw_zoom)
+
+    metric_totals: Dict[str, Dict[str, float]] = {}
     for bench in benchmarks:
         if bench.get("benchmark_type") != "time":
             continue
-        for zoom, count in bench["result"]["false_positives"].items():
-            rows.append(
-                {"benchmark": bench["name"], "zoom": zoom or "n/a", "metric": "False Positives", "count": count}
-            )
-        for zoom, count in bench["result"]["false_negatives"].items():
-            rows.append(
-                {"benchmark": bench["name"], "zoom": zoom or "n/a", "metric": "False Negatives", "count": count}
-            )
+        result = bench.get("result", {})
+        for metric_key, metric_label in (
+            ("false_positives", "False Positives"),
+            ("false_negatives", "False Negatives"),
+        ):
+            counts = result.get(metric_key)
+            if not isinstance(counts, dict):
+                continue
+            bucket = metric_totals.setdefault(metric_label, {})
+            for zoom, count in counts.items():
+                if count is None:
+                    continue
+                try:
+                    value = float(count)
+                except (TypeError, ValueError):
+                    continue
+                label = _normalize_zoom_label(zoom)
+                bucket[label] = bucket.get(label, 0.0) + value
+
+    rows: List[Dict[str, Any]] = []
+    for metric, zoom_counts in metric_totals.items():
+        baseline = zoom_counts.get("LineString")
+        if baseline in (None, 0):
+            continue
+        for zoom, total in zoom_counts.items():
+            if zoom == "LineString":
+                continue
+            pct_delta = (total / baseline) * 100
+            if metric == "False Negatives":
+                pct_delta *= -1
+            rows.append({"zoom": zoom, "metric": metric, "pct_delta": pct_delta})
+
     if not rows:
-        print("No false positive/negative data to plot.")
+        print("No relative false positive/negative data to plot.")
         return
+
     df = pd.DataFrame(rows)
+    zoom_order = sorted(df["zoom"].unique(), key=lambda z: (len(z), z))
+    df["zoom"] = pd.Categorical(df["zoom"], categories=zoom_order, ordered=True)
+
     fig = px.bar(
         df,
         x="zoom",
-        y="count",
+        y="pct_delta",
         color="metric",
+        color_discrete_sequence=px.colors.qualitative.Safe,
         barmode="group",
-        labels={"count": "Count", "zoom": "Zoom level"},
-        log_y=True,
+        labels={"zoom": "Zoom level", "pct_delta": "% vs. LineString", "metric": "Metric"},
         pattern_shape="metric",
-        text_auto='.3s',
+        text_auto='.1f',
     )
-    fig.update_layout(
+    fig.update_traces(texttemplate="%{y:.1f}%")
+    fig.add_hline(y=0, line_dash="dash", line_color="rgba(0,0,0,0.4)")
+    fig.update_layout(width=700, height=600)
+    y_min = min(df["pct_delta"].min(), 0) - 5
+    y_max = max(df["pct_delta"].max(), 0) + 5
+    fig.update_yaxes(
+        autorange=False,
+        range=[y_min,y_max],
     )
     _apply_transparent_theme(fig, with_bar_text=True)
     output_path = _next_output_path("false_match_counts")
@@ -466,11 +512,13 @@ def plot_linestring_containment_pct(benchmarks: List[Dict[str, Any]]) -> None:
         x="zoom",
         y="percentage",
         color="variant",
+        color_discrete_sequence=px.colors.qualitative.Safe,
         barmode="group",
         labels={"zoom": "Zoom level", "percentage": "% of trajectories not contained", "variant": "Variant"},
         pattern_shape="variant",
-        text_auto='.2f',
+        text_auto='.1f',
     )
+    fig.update_traces(texttemplate="%{y:.1f}%")
     fig.update_layout(
         width=700,
         height=600,
@@ -521,6 +569,7 @@ def plot_crossing_via_exec_times(
         x="route",
         y="exec_ms",
         color="series",
+        color_discrete_sequence=px.colors.qualitative.Safe,
         barmode="group",
         labels={"route": "Route", "exec_ms": "Execution time (ms)", "series": "Variant"},
         log_y=True,
