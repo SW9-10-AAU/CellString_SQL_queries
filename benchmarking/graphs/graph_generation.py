@@ -100,6 +100,30 @@ def _get_linestring_length_map(meta: Dict[str, Any]) -> Dict[int, float]:
     return length_map
 
 
+def _get_linestring_mbr_area_map(meta: Dict[str, Any]) -> Dict[int, float]:
+    area_map: Dict[int, float] = {}
+    candidates = [
+        ("trajectory_mbr_area_km2", 1.0),
+        ("trajectory_linestring_mbr_area_km2", 1.0),
+        ("trajectory_mbr_area_m2", 1e-6),
+        ("trajectory_linestring_mbr_area_m2", 1e-6),
+    ]
+    for key, scale in candidates:
+        values = meta.get(key)
+        if not isinstance(values, dict):
+            continue
+        for traj_id, raw in values.items():
+            if raw is None:
+                continue
+            try:
+                area_map[int(traj_id)] = float(raw) * scale
+            except (TypeError, ValueError):
+                continue
+        if area_map:
+            break
+    return area_map
+
+
 def _get_stop_cardinality_map(meta: Dict[str, Any], zoom: str) -> Dict[int, int]:
     cards = meta.get("stop_cardinalities") or {}
     zoom_card = cards.get(zoom) or cards.get(str(zoom))
@@ -408,6 +432,69 @@ def plot_cellstring_length(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any
     output_path = _next_output_path("cellstring_length")
     fig.write_image(output_path)
     print(f"Wrote Execution time vs. CellString length plot to {output_path}")
+
+
+def plot_linestring_mbr_exec_time(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]) -> None:
+    area_map = _get_linestring_mbr_area_map(meta)
+    if not area_map:
+        print("No LineString MBR area data found in the report; skipping MBR-area plot.")
+        return
+
+    rows: List[Dict[str, Any]] = []
+
+    def _collect(samples: List[Dict[str, Any]], series: str, bench_name: str) -> None:
+        for sample in samples or []:
+            traj_id = sample.get("trajectory_id")
+            exec_ms = sample.get("exec_ms")
+            if traj_id is None or exec_ms is None:
+                continue
+            area_km2 = area_map.get(int(traj_id))
+            if area_km2 is None or area_km2 <= 0:
+                continue
+            rows.append(
+                {
+                    "benchmark": bench_name,
+                    "series": series,
+                    "trajectory_id": traj_id,
+                    "area_km2": area_km2,
+                    "exec_ms": exec_ms,
+                }
+            )
+
+    for bench in benchmarks:
+        if bench.get("benchmark_type") != "time":
+            continue
+        result = bench.get("result", {})
+        _collect(result.get("st", {}).get("samples", []), "LineString", bench["name"])
+        for zoom, cst in result.get("cst_results", {}).items():
+            label = zoom or "CellString"
+            _collect(cst.get("samples", []), label, bench["name"])
+
+    if not rows:
+        print("No benchmark samples with LineString MBR areas; skipping MBR-area plot.")
+        return
+
+    df = pd.DataFrame(rows).sort_values(["benchmark", "series", "area_km2"])
+    fig = px.scatter(
+        df,
+        x="area_km2",
+        y="exec_ms",
+        color="series",
+        color_discrete_map=SERIES_COLOR_MAP,
+        symbol="series",
+        symbol_map=SERIES_SYMBOL_MAP,
+        category_orders={"series": ["LineString", *ZOOM_ORDER]},
+        labels={"area_km2": "LineString MBR area (km²)", "exec_ms": "Execution time (ms)", "series": "Data"},
+        log_y=True,
+        log_x=True,
+        trendline="lowess",
+        trendline_options=dict(frac=0.2),
+    )
+    fig.update_layout(width=1000, height=650)
+    _apply_transparent_theme(fig, legend_horizontal=True)
+    output_path = _next_output_path("linestring_mbr_exec_time")
+    fig.write_image(output_path)
+    print(f"Wrote Execution time vs. LineString MBR area plot to {output_path}")
 
 
 def plot_stop_area_exec_time(
@@ -785,6 +872,9 @@ def run_all_graphs(
 
     if wants("cellstring_length"):
         plot_cellstring_length(benchmarks, data["meta"])
+
+    if wants("linestring_mbr_exec_time"):
+        plot_linestring_mbr_exec_time(benchmarks, data["meta"])
 
     if wants("stop_area_exec_time"):
         plot_stop_area_exec_time(benchmarks, data["meta"])
