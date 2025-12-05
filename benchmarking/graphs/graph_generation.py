@@ -8,6 +8,20 @@ import plotly.express as px
 
 
 OUTPUT_DIR = Path("benchmarking/graphs/output")
+SAFE = px.colors.qualitative.Safe
+ZOOM_ORDER = ["z13", "z17", "z21"]
+SERIES_COLOR_MAP = {
+    "LineString": SAFE[0],
+    "z13": SAFE[1],
+    "z17": SAFE[2],
+    "z21": SAFE[3],
+}
+SERIES_SYMBOL_MAP = {
+    "LineString": "circle",
+    "z13": "square",
+    "z17": "diamond",
+    "z21": "x",
+}
 
 
 def _next_output_path(base_name: str, extension: str = ".pdf") -> Path:
@@ -84,6 +98,34 @@ def _get_linestring_length_map(meta: Dict[str, Any]) -> Dict[int, float]:
             break
 
     return length_map
+
+
+def _get_stop_cardinality_map(meta: Dict[str, Any], zoom: str) -> Dict[int, int]:
+    cards = meta.get("stop_cardinalities") or {}
+    zoom_card = cards.get(zoom) or cards.get(str(zoom))
+    if not zoom_card:
+        return {}
+    if isinstance(zoom_card, dict):
+        normalized: Dict[int, int] = {}
+        for stop_id, count in zoom_card.items():
+            try:
+                normalized[int(stop_id)] = int(count)
+            except (TypeError, ValueError):
+                continue
+        return normalized
+    if isinstance(zoom_card, list):
+        stop_ids = meta.get("stop_ids") or []
+        if len(stop_ids) != len(zoom_card):
+            return {}
+        normalized = {}
+        for stop_id, count in zip(stop_ids, zoom_card):
+            try:
+                normalized[int(stop_id)] = int(count)
+            except (TypeError, ValueError):
+                continue
+        return normalized
+    return {}
+
 
 def _get_stop_area_map(meta: Dict[str, Any]) -> Dict[int, float]:
     candidates = (
@@ -279,8 +321,10 @@ def plot_cellstring_delta(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
         x="length_km",
         y="exec_ms",
         color="series",
-        color_discrete_sequence=px.colors.qualitative.Safe,
+        color_discrete_map=SERIES_COLOR_MAP,
         symbol="series",
+        symbol_map=SERIES_SYMBOL_MAP,
+        category_orders={"series": ["LineString", *ZOOM_ORDER]},
         labels={"length_km": "LineString length (km)", "exec_ms": "Execution time (ms)", "series": "Data"},
         log_y=True,
         log_x=True,
@@ -295,6 +339,75 @@ def plot_cellstring_delta(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
     output_path = _next_output_path("cellstring_delta")
     fig.write_image(output_path)
     print(f"Wrote Execution time vs. LineString length plot to {output_path}")
+
+
+def plot_cellstring_length(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]) -> None:
+    card_maps = meta.get("trajectory_cardinalities", {})
+    if not card_maps:
+        print("No CellString cardinality data found in the report; skipping Execution time vs. CellString length plot.")
+        return
+
+    rows: List[Dict[str, Any]] = []
+
+    def _collect_samples(samples: List[Dict[str, Any]], zoom: str, bench_name: str) -> None:
+        if not zoom:
+            return
+        card_map = _get_cardinality_map(meta, zoom)
+        if not card_map:
+            return
+        for sample in samples or []:
+            traj_id = sample.get("trajectory_id")
+            exec_ms = sample.get("exec_ms")
+            if traj_id is None or exec_ms is None:
+                continue
+            cell_count = card_map.get(int(traj_id))
+            if cell_count is None:
+                continue
+            rows.append(
+                {
+                    "benchmark": bench_name,
+                    "zoom": zoom,
+                    "trajectory_id": traj_id,
+                    "cell_count": cell_count,
+                    "exec_ms": exec_ms,
+                }
+            )
+
+    for bench in benchmarks:
+        if bench.get("benchmark_type") != "time":
+            continue
+        result = bench["result"]
+        for zoom, cst in result.get("cst_results", {}).items():
+            _collect_samples(cst.get("samples", []), zoom, bench["name"])
+
+    if not rows:
+        print("No benchmark samples with CellString cardinality; skipping Execution time vs. CellString length plot.")
+        return
+
+    df = pd.DataFrame(rows).sort_values(["benchmark", "zoom", "cell_count"])
+    fig = px.scatter(
+        df,
+        x="cell_count",
+        y="exec_ms",
+        color="zoom",
+        color_discrete_map=SERIES_COLOR_MAP,
+        symbol="zoom",
+        symbol_map=SERIES_SYMBOL_MAP,
+        category_orders={"zoom": ZOOM_ORDER},
+        labels={"cell_count": "CellString length (# of cells)", "exec_ms": "Execution time (ms)", "zoom": "Zoom level"},
+        log_y=True,
+        log_x=True,
+        trendline="lowess",
+        trendline_options=dict(frac=0.2),
+    )
+    fig.update_layout(
+        width=1000,
+        height=650,
+    )
+    _apply_transparent_theme(fig, legend_horizontal=True)
+    output_path = _next_output_path("cellstring_length")
+    fig.write_image(output_path)
+    print(f"Wrote Execution time vs. CellString length plot to {output_path}")
 
 
 def plot_stop_area_exec_time(
@@ -346,8 +459,10 @@ def plot_stop_area_exec_time(
         x="area_m2",
         y="exec_ms",
         color="series",
-        color_discrete_sequence=px.colors.qualitative.Safe,
+        color_discrete_map=SERIES_COLOR_MAP,
         symbol="series",
+        symbol_map=SERIES_SYMBOL_MAP,
+        category_orders={"zoom": ZOOM_ORDER},
         labels={"area_m2": "Stop area (m²)", "exec_ms": "Execution time (ms)"},
         log_y=True,
         log_x=True,
@@ -362,6 +477,68 @@ def plot_stop_area_exec_time(
     output_path = _next_output_path("stop_area_exec_time")
     fig.write_image(output_path)
     print(f"Wrote Stop Area vs Execution Time plot to {output_path}")
+
+
+def plot_stop_cellstring_length_exec_time(
+        benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
+) -> None:
+    rows: List[Dict[str, Any]] = []
+
+    def _add_sample(sample:Dict[str, Any], series: str, card_map: Dict[int, int]) -> None:
+        stop_id = sample.get("stop_id")
+        exec_ms = sample.get("exec_ms")
+        if stop_id is None or exec_ms is None:
+            return
+        cell_count = card_map.get(int(stop_id))
+        if cell_count is None:
+            return
+        rows.append(
+            {
+                "stop_id": stop_id,
+                "cell_count": cell_count,
+                "exec_ms": exec_ms,
+                "series": series,
+            }
+        )
+
+    for bench in benchmarks:
+        if bench.get("benchmark_type") != "time":
+            continue
+        result = bench.get("result", {})
+        for zoom, zoom_result in result.get("cst_results", {}).items():
+            if not zoom:
+                continue
+            card_map = _get_stop_cardinality_map(meta, zoom)
+            if not card_map:
+                continue
+            for sample in zoom_result.get("samples", []):
+                _add_sample(sample, zoom, card_map)
+
+    if not rows:
+        print("No stop CellString execution data to plot.")
+        return
+
+    df = pd.DataFrame(rows)
+    fig = px.scatter(
+        df,
+        x="cell_count",
+        y="exec_ms",
+        color="series",
+        color_discrete_map=SERIES_COLOR_MAP,
+        symbol="series",
+        symbol_map=SERIES_SYMBOL_MAP,
+        category_orders={"zoom": ZOOM_ORDER},
+        labels={"cell_count": "CellString length (# of cells)", "exec_ms": "Execution time (ms)", "series": "Zoom"},
+        log_y=True,
+        log_x=True,
+        trendline="lowess",
+        trendline_options=dict(frac=0.2),
+    )
+    fig.update_layout(width=1000, height=650)
+    _apply_transparent_theme(fig, legend_horizontal=True)
+    output_path = _next_output_path("stop_cellstring_length")
+    fig.write_image(output_path)
+    print(f"Wrote Stop CellString length vs Execution Time plot to {output_path}")
 
 
 def plot_exec_time_bars(
@@ -605,8 +782,14 @@ def run_all_graphs(
     if wants("cellstring_delta"):
         plot_cellstring_delta(benchmarks, data["meta"])
 
+    if wants("cellstring_length"):
+        plot_cellstring_length(benchmarks, data["meta"])
+
     if wants("stop_area_exec_time"):
         plot_stop_area_exec_time(benchmarks, data["meta"])
+
+    if wants("stop_cellstring_length_exec_time"):
+        plot_stop_cellstring_length_exec_time(benchmarks, data["meta"])
 
     if wants("exec_time_bars"):
         time_rows = _build_time_rows(data["benchmarks"], length_stats)
