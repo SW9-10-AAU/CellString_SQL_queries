@@ -48,5 +48,5 @@ def build_via_benchmark(label: str, crossings: tuple[int, int, int]) -> TimeBenc
 
 CROSSING_VIA_BENCHMARKS = [
     build_via_benchmark("Skagen-Storebælt-Bornholm", (1, 2, 4)),
-    build_via_benchmark("Skagen-Helsingør-Bornholm", (1, 3, 4))
+    build_via_benchmark("Skagen-Kattegat-Storebælt", (1, 5, 2))
 ]

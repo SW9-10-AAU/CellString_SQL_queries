@@ -751,8 +751,9 @@ def plot_crossing_via_exec_times(
         labels={"route": "Route", "exec_ms": "Execution time (ms)", "series": "Variant"},
         log_y=True,
         pattern_shape="series",
-        text_auto='.3s',
+        text_auto='.3f',
     )
+    fig.update_traces(texttemplate="%{y:.3f} ms")
     fig.update_layout(
         width=1000,
         height=650,
