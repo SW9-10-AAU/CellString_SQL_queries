@@ -66,19 +66,37 @@ def _filter_benchmarks(benchmarks: List[Dict[str, Any]], selected: Optional[List
     return [bench for bench in benchmarks if bench["name"] in wanted]
 
 
-def _get_cardinality_map(meta: Dict[str, Any], zoom: str) -> Dict[int, int]:
-    card_data = meta.get("trajectory_cardinalities", {})
-    zoom_card = card_data.get(zoom, {})
-    return {int(traj_id): count for traj_id, count in zoom_card.items()}
+def _get_cardinality_map(cards: Dict[str, Any], zoom: str) -> Dict[int, int]:
+    if not cards or not zoom:
+        return {}
+    zoom_card = cards.get(zoom) or cards.get(str(zoom))
+    if not isinstance(zoom_card, dict):
+        return {}
+    normalized: Dict[int, int] = {}
+    for traj_id, count in zoom_card.items():
+        try:
+            normalized[int(traj_id)] = int(count)
+        except (TypeError, ValueError):
+            continue
+    return normalized
+
+
+def _select_trajectory_cardinality_source(meta: Dict[str, Any], bench_name: str) -> Dict[str, Any]:
+    label = (bench_name or "").lower()
+    if "supercover" in label:
+        return meta.get("trajectory_supercover_cardinalities") or {}
+    if "bresenham" in label:
+        return meta.get("trajectory_cardinalities") or {}
+    return meta.get("trajectory_cardinalities") or {}
 
 
 def _get_linestring_length_map(meta: Dict[str, Any]) -> Dict[int, float]:
     length_map: Dict[int, float] = {}
     candidates = [
-        {"trajectory_lengths_km", 1.0},
-        {"trajectory_linestring_lengths_km", 1.0},
-        {"trajectory_lengths_m", 0.001},
-        {"trajectory_linestring_lengths_m", 0.001},
+        ("trajectory_lengths_km", 1.0),
+        ("trajectory_linestring_lengths_km", 1.0),
+        ("trajectory_lengths_m", 0.001),
+        ("trajectory_linestring_lengths_m", 0.001),
     ]
 
     for key, scale in candidates:
@@ -103,10 +121,10 @@ def _get_linestring_length_map(meta: Dict[str, Any]) -> Dict[int, float]:
 def _get_linestring_mbr_area_map(meta: Dict[str, Any]) -> Dict[int, float]:
     area_map: Dict[int, float] = {}
     candidates = [
-        ("trajectory_mbr_area_km2", 1.0),
+        ("trajectory_linestring_mbr_area_m2", 1_000_000.0**-1),
+        ("trajectory_mbr_area_m2", 1_000_000.0**-1),
         ("trajectory_linestring_mbr_area_km2", 1.0),
-        ("trajectory_mbr_area_m2", 1e-6),
-        ("trajectory_linestring_mbr_area_m2", 1e-6),
+        ("trajectory_mbr_area_km2", 1.0),
     ]
     for key, scale in candidates:
         values = meta.get(key)
@@ -366,17 +384,23 @@ def plot_cellstring_delta(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]
 
 
 def plot_cellstring_length(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any]) -> None:
-    card_maps = meta.get("trajectory_cardinalities", {})
-    if not card_maps:
+    if not any(
+        isinstance(meta.get(key), dict) and meta.get(key)
+        for key in (
+            "trajectory_cardinalities",
+            "trajectory_supercover_cardinalities",
+        )
+    ):
         print("No CellString cardinality data found in the report; skipping Execution time vs. CellString length plot.")
         return
 
     rows: List[Dict[str, Any]] = []
+    LINESTRING_MEDIAN_EXEC_MS = 758.638
 
-    def _collect_samples(samples: List[Dict[str, Any]], zoom: str, bench_name: str) -> None:
-        if not zoom:
+    def _collect_samples(samples: List[Dict[str, Any]], zoom: str, bench_name: str, card_source: Dict[str, Any]) -> None:
+        if not zoom or not card_source:
             return
-        card_map = _get_cardinality_map(meta, zoom)
+        card_map = _get_cardinality_map(card_source, zoom)
         if not card_map:
             return
         for sample in samples or []:
@@ -401,8 +425,9 @@ def plot_cellstring_length(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any
         if bench.get("benchmark_type") != "time":
             continue
         result = bench["result"]
+        card_source = _select_trajectory_cardinality_source(meta, bench.get("name", ""))
         for zoom, cst in result.get("cst_results", {}).items():
-            _collect_samples(cst.get("samples", []), zoom, bench["name"])
+            _collect_samples(cst.get("samples", []), zoom, bench["name"], card_source)
 
     if not rows:
         print("No benchmark samples with CellString cardinality; skipping Execution time vs. CellString length plot.")
@@ -427,6 +452,26 @@ def plot_cellstring_length(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any
     fig.update_layout(
         width=1000,
         height=650,
+    )
+    fig.update_xaxes(
+        tickangle=45,
+    )
+    fig.add_hline(
+        y=LINESTRING_MEDIAN_EXEC_MS,
+        line_dash="dot",
+        line_color="black",
+    )
+    fig.add_annotation(
+        x=0.02,
+        xref="paper",
+        y=0.97,
+        yref="paper",
+        text=f"LineString median ({LINESTRING_MEDIAN_EXEC_MS:.3f} ms)",
+        bgcolor="rgba(255,255,255,0.9)",
+        font=dict(color="black", size=26),
+        showarrow=False,
+        xanchor="left",
+        yanchor="top",
     )
     _apply_transparent_theme(fig, legend_horizontal=True)
     output_path = _next_output_path("cellstring_length")
@@ -559,6 +604,9 @@ def plot_stop_area_exec_time(
     fig.update_layout(
         width=1000,
         height=650,
+    )
+    fig.update_xaxes(
+        tickangle=45,
     )
     _apply_transparent_theme(fig, legend_horizontal=True)
     output_path = _next_output_path("stop_area_exec_time")
@@ -705,8 +753,6 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
             if zoom == "LineString":
                 continue
             pct_delta = (total / baseline) * 100
-            if metric == "False Negatives":
-                pct_delta *= -1
             rows.append({"zoom": zoom, "metric": metric, "pct_delta": pct_delta})
 
     if not rows:
@@ -724,18 +770,18 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
         color="metric",
         color_discrete_sequence=px.colors.qualitative.Safe,
         barmode="group",
-        labels={"zoom": "Zoom level", "pct_delta": "% vs. LineString", "metric": "Metric"},
+        labels={"zoom": "Zoom level", "pct_delta": "% of LineString", "metric": "Metric"},
         pattern_shape="metric",
         text_auto='.1f',
     )
     fig.update_traces(texttemplate="%{y:.1f}%")
-    fig.add_hline(y=0, line_dash="dash", line_color="rgba(0,0,0,0.4)")
     fig.update_layout(width=700, height=600)
-    y_min = min(df["pct_delta"].min(), 0) - 5
+    y_min = 0
     y_max = max(df["pct_delta"].max(), 0) + 5
     fig.update_yaxes(
         autorange=False,
         range=[y_min,y_max],
+        ticksuffix="%",
     )
     _apply_transparent_theme(fig, with_bar_text=True)
     output_path = _next_output_path("false_match_counts")
@@ -789,7 +835,8 @@ def plot_linestring_containment_pct(benchmarks: List[Dict[str, Any]]) -> None:
     )
     fig.update_yaxes(
         autorange=False,
-        range=[0,100],
+        range=[0,105],
+        ticksuffix="%",
     )
     _apply_transparent_theme(fig, with_bar_text=True, left_legend=True)
     output_path = _next_output_path("linestring_containment_pct")
@@ -838,14 +885,14 @@ def plot_crossing_via_exec_times(
         labels={"route": "Route", "exec_ms": "Execution time (ms)", "series": "Variant"},
         log_y=True,
         pattern_shape="series",
-        text_auto='.3f',
+        text_auto='.2f',
     )
-    fig.update_traces(texttemplate="%{y:.3f} ms")
+    fig.update_traces(texttemplate="%{y:.2f} ms")
     fig.update_layout(
         width=1000,
         height=650,
     )
-    _apply_transparent_theme(fig, with_bar_text=True, left_legend=True)
+    _apply_transparent_theme(fig, with_bar_text=True)
     output_path = _next_output_path("crossing_via_exec_times")
     fig.write_image(output_path)
     print(f"Wrote Crossing Via Execution Times bar-plot to {output_path}")

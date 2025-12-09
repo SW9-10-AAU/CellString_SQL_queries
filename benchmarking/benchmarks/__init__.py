@@ -7,6 +7,5 @@ from .via_query_benchmark import CROSSING_VIA_BENCHMARKS
 from .linestring_containment_benchmark import LINESTRING_CONTAINMENT_BENCHMARKS
 
 RUN_PLAN = [
-    intersects_traj_benchmark_bresenham,
-    intersects_traj_benchmark_supercover,
+    *CROSSING_VIA_BENCHMARKS,
 ]

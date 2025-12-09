@@ -37,6 +37,20 @@ def _get_area_ids(conn, selected_ids=None):
         return all_area_ids
 
 
+def _fetch_random_ids(cur, column_name, table_name, sample_size):
+    if sample_size <= 0:
+        return []
+    if not re.fullmatch(r"[A-Za-z0-9_]+", column_name):
+        raise ValueError(f"Invalid column name: {column_name}")
+    if not re.fullmatch(r"[A-Za-z0-9_.]+", table_name):
+        raise ValueError(f"Invalid table name: {table_name}")
+    cur.execute(
+        f"SELECT {column_name} FROM {table_name} ORDER BY random() LIMIT %s",
+        (sample_size,)
+    )
+    return [row[0] for row in cur.fetchall()]
+
+
 def _build_length_stats(stat_entries):
     stats = []
     for label, lengths in stat_entries:
@@ -101,20 +115,6 @@ def _collect_tables_from_benchmark(benchmark):
     return []
 
 
-def _fetch_random_ids(cur, column_name, table_name, sample_size):
-    if sample_size <= 0:
-        return []
-    if not re.fullmatch(r"[A-Za-z0-9_]+", column_name):
-        raise ValueError(f"Invalid column name: {column_name}")
-    if not re.fullmatch(r"[A-Za-z0-9_.]+", table_name):
-        raise ValueError(f"Invalid table name: {table_name}")
-    cur.execute(
-        f"SELECT {column_name} FROM {table_name} ORDER BY random() LIMIT %s",
-        (sample_size,)
-    )
-    return [row[0] for row in cur.fetchall()]
-
-
 def _serialize_run_outcome(run: RunOutcome) -> dict:
     payload = {
         "exec_ms_med": run.exec_ms_med,
@@ -159,8 +159,9 @@ def main():
     load_dotenv()
     trajectory_source_table = "prototype2.trajectory_cs"
     stop_source_table = "prototype2.stop_cs"
-    trajectory_sample_size = 100
-    stop_sample_size = 5
+    trajectory_sample_size = 400
+    stop_sample_size = 400
+    min_trajectory_length_m = 500
 
     db_url = os.getenv("DATABASE_URL")
     if not db_url:
@@ -177,21 +178,31 @@ def main():
         stop_ids = []
 
         traj_linestring_lengths: List[float] = []
-        stop_poly_area_size: List[float] = []
         linestring_lengths_by_id: Dict[int, float] = {}
+        linestring_mbr_areas_by_id: Dict[int, float] = {}
         traj_cellstring_lengths: Dict[str, List[int]] = {zoom: [] for zoom in ZOOM_LEVELS}
         cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
-        stop_cellstring_lengths: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
+        stop_poly_area_size: List[float] = []
+        stop_polygon_areas_by_id: Dict[int, float] = {}
+        stop_cellstring_lengths: Dict[str, List[int]] = {zoom: [] for zoom in ZOOM_LEVELS}
+        stop_cellstring_cardinalities: Dict[str, Dict[int, int]] = {zoom: {} for zoom in ZOOM_LEVELS}
 
         benchmark_outputs = []
 
         with conn.cursor() as cur:
-            trajectory_ids = _fetch_random_ids(
-                cur,
-                "trajectory_id",
-                trajectory_source_table,
-                trajectory_sample_size,
+            cur.execute(
+                """
+                SELECT cs.trajectory_id
+                FROM prototype2.trajectory_cs AS cs
+                JOIN prototype2.trajectory_ls AS ls
+                    ON ls.trajectory_id = cs.trajectory_id
+                WHERE ST_Length(ST_Transform(ls.geom, 3857)) > %s
+                ORDER BY random()
+                LIMIT %s
+                """,
+                (min_trajectory_length_m, trajectory_sample_size),
             )
+            trajectory_ids = [row[0] for row in cur.fetchall()]
             stop_ids = _fetch_random_ids(
                 cur,
                 "stop_id",
@@ -201,15 +212,18 @@ def main():
 
             if trajectory_ids:
                 cur.execute(
-                    "SELECT trajectory_id, ST_Length(ST_Transform(geom, 3857)) "
+                    "SELECT trajectory_id, "
+                    "ST_Length(ST_Transform(geom, 3857)) AS length_m, "
+                    "ST_Area(ST_Envelope(ST_Transform(geom, 3857))) AS mbr_area_m2 "
                     "FROM prototype2.trajectory_ls WHERE trajectory_id = ANY(%s)",
                     (trajectory_ids,)
                 )
-                for traj_id, length in cur.fetchall():
-                    if length is None:
-                        continue
-                    traj_linestring_lengths.append(length)
-                    linestring_lengths_by_id[int(traj_id)] = float(length)
+                for traj_id, length, mbr_area in cur.fetchall():
+                    if length is not None:
+                        traj_linestring_lengths.append(length)
+                        linestring_lengths_by_id[int(traj_id)] = float(length)
+                    if mbr_area is not None:
+                        linestring_mbr_areas_by_id[int(traj_id)] = float(mbr_area)
 
                 for zoom in ZOOM_LEVELS:
                     cur.execute(
@@ -224,19 +238,27 @@ def main():
                         cellstring_lengths[zoom][int(traj_id)] = int(count)
             if stop_ids:
                 cur.execute(
-                    "SELECT ST_Area(ST_Transform(geom, 3857)) "
+                    "SELECT stop_id, ST_Area(ST_Transform(geom, 3857)) AS area_m2 "
                     "FROM prototype2.stop_poly WHERE stop_id = ANY(%s)",
                     (stop_ids,)
                 )
-                stop_poly_area_size = [row[0] for row in cur.fetchall() if row[0] is not None]
+                for stop_id, area in cur.fetchall():
+                    if area is None:
+                        continue
+                    stop_poly_area_size.append(area)
+                    stop_polygon_areas_by_id[int(stop_id)] = float(area)
 
                 for zoom in ZOOM_LEVELS:
                     cur.execute(
-                        f"SELECT Cardinality(cellstring_{zoom}) "
+                        f"SELECT stop_id, Cardinality(cellstring_{zoom}) "
                         f"FROM {stop_source_table} WHERE stop_id = ANY(%s)",
                         (stop_ids,)
                     )
-                    stop_cellstring_lengths[zoom] = [row[0] for row in cur.fetchall() if row[0] is not None]
+                    for stop_id, count in cur.fetchall():
+                        if count is None:
+                            continue
+                        stop_cellstring_lengths[zoom].append(count)
+                        stop_cellstring_cardinalities[zoom][int(stop_id)] = int(count)
 
         for benchmark in RUN_PLAN:
             bench_instance = benchmark
@@ -322,11 +344,16 @@ def main():
                     for zoom, counts in cellstring_lengths.items()
                     if counts
                 },
+                "trajectory_linestring_mbr_area_m2": {
+                    str(traj_id): area for traj_id, area in linestring_mbr_areas_by_id.items()
+                },
                 "stop_polygon_areas_m2": {
-                    str(stop_id): area for stop_id, area in zip(stop_ids, stop_poly_area_size)
+                    str(stop_id): area for stop_id, area in stop_polygon_areas_by_id.items()
                 },
                 "stop_cardinalities": {
-                    zoom: counts for zoom, counts in stop_cellstring_lengths.items() if counts
+                    zoom: {str(stop_id): count for stop_id, count in counts.items()}
+                    for zoom, counts in stop_cellstring_cardinalities.items()
+                    if counts
                 },
             },
             "benchmarks": benchmark_outputs,
