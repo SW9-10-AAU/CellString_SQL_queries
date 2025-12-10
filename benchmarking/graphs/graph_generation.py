@@ -249,7 +249,7 @@ def _apply_transparent_theme(fig, legend_horizontal: Optional[bool] = None, with
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         legend_bgcolor="rgba(0,0,0,0)",
-        margin=dict(l=60, r=15, t=15, b=60),
+        margin=dict(l=60, r=15, t=15, b=15),
         legend_title=dict(text=""),
         font_size=25,
         font_weight=550,
@@ -464,11 +464,11 @@ def plot_cellstring_length(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any
     fig.add_annotation(
         x=0.02,
         xref="paper",
-        y=0.97,
+        y=0.79,
         yref="paper",
         text=f"LineString median ({LINESTRING_MEDIAN_EXEC_MS:.3f} ms)",
         bgcolor="rgba(255,255,255,0.9)",
-        font=dict(color="black", size=26),
+        font=dict(color="black", size=20),
         showarrow=False,
         xanchor="left",
         yanchor="top",
@@ -700,7 +700,7 @@ def plot_exec_time_bars(
         y="exec_ms",
         color="series",
         color_discrete_sequence=px.colors.qualitative.Safe,
-        labels={"exec_ms": "Execution median (ms)", "series": "Data"},
+        labels={"exec_ms": "Execution median (ms)", "series": ""},
         log_y=True,
         pattern_shape="series",
         text_auto='.3f',
@@ -709,6 +709,7 @@ def plot_exec_time_bars(
     fig.update_layout(
         showlegend=False
     )
+    fig.update_xaxes(title_text="")
     _apply_transparent_theme(fig, with_bar_text=True)
     output_path = _next_output_path("exec_time_bars")
     fig.write_image(output_path)
@@ -770,7 +771,7 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
         color="metric",
         color_discrete_sequence=px.colors.qualitative.Safe,
         barmode="group",
-        labels={"zoom": "Zoom level", "pct_delta": "% of LineString", "metric": "Metric"},
+        labels={"zoom": "", "pct_delta": "% of LineString", "metric": "Metric"},
         pattern_shape="metric",
         text_auto='.1f',
     )
@@ -783,6 +784,7 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
         range=[y_min,y_max],
         ticksuffix="%",
     )
+    fig.update_xaxes(title_text="")
     _apply_transparent_theme(fig, with_bar_text=True)
     output_path = _next_output_path("false_match_counts")
     fig.write_image(output_path)
@@ -824,7 +826,7 @@ def plot_linestring_containment_pct(benchmarks: List[Dict[str, Any]]) -> None:
         color="variant",
         color_discrete_sequence=px.colors.qualitative.Safe,
         barmode="group",
-        labels={"zoom": "Zoom level", "percentage": "% of trajectories not contained", "variant": "Variant"},
+        labels={"zoom": "", "percentage": "% of trajectories not contained", "variant": "Variant"},
         pattern_shape="variant",
         text_auto='.1f',
     )
@@ -838,6 +840,7 @@ def plot_linestring_containment_pct(benchmarks: List[Dict[str, Any]]) -> None:
         range=[0,105],
         ticksuffix="%",
     )
+    fig.update_xaxes(title_text="")
     _apply_transparent_theme(fig, with_bar_text=True, left_legend=True)
     output_path = _next_output_path("linestring_containment_pct")
     fig.write_image(output_path)
