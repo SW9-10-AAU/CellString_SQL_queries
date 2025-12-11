@@ -40,3 +40,23 @@ SELECT
     CST_Coverage(union_cells, area.cellstring_z13) AS coverage_percent
 FROM mmsi_union, area
 ORDER BY coverage_percent DESC;
+
+
+WITH area AS (
+    SELECT
+        cellstring_z13 AS cellstring,
+        3::int AS area_id
+    FROM benchmark.area_cs
+    WHERE area_id = 3
+)
+SELECT
+    area.area_id,
+    coverage.mmsi,
+    coverage.coverage_percent
+FROM area
+CROSS JOIN LATERAL CST_Coverage_ByMMSI(
+    'prototype2.trajectory_supercover_cs'::regclass,
+    13,
+    area.cellstring
+) AS coverage
+ORDER BY coverage.coverage_percent DESC;

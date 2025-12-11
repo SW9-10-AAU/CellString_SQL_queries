@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import json
 import time
+from collections import defaultdict
 from dataclasses import dataclass, field
+from decimal import Decimal
 from statistics import median
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
@@ -29,6 +31,9 @@ class ValueBenchmark:
     zoom_levels: List[str] = field(default_factory=list)
     with_trajectory_ids: bool = False
     with_stop_ids: bool = False
+    params: Tuple[Any, ...] = tuple()
+    capture_rows: bool = False
+    row_field_names: Optional[List[str]] = None
 
 
 @dataclass
@@ -55,6 +60,7 @@ class TimeBenchmarkResult:
 class ValueBenchmarkResult:
     name: str
     median_values: Dict[str, float]
+    rows_by_zoom: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
 
 
 def _discard_and_set(cur, statement_timeout_seconds: int | None = None) -> None:
@@ -94,6 +100,24 @@ def _warmup(cur, sql: str, params: Sequence[Any], statement_timeout_seconds: int
 def _median_or_zero(values: Iterable[float]) -> float:
     values = list(values)
     return round(median(values), 3) if values else 0.0
+
+
+def _normalize_row_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
+
+
+def _row_to_mapping(row: Sequence[Any], field_names: Optional[List[str]]) -> Dict[str, Any]:
+    mapping: Dict[str, Any] = {}
+    if field_names:
+        for idx, name in enumerate(field_names):
+            if idx < len(row):
+                mapping[name] = _normalize_row_value(row[idx])
+        return mapping
+    for idx, value in enumerate(row):
+        mapping[f"col{idx}"] = _normalize_row_value(value)
+    return mapping
 
 
 def _aggregate_runs(runs: List[RunOutcome], rows: List[Tuple]) -> RunOutcome:
@@ -330,6 +354,7 @@ def run_value_benchmark(
     trajectory_ids = trajectory_ids or []
     stop_ids = stop_ids or []
     median_values: Dict[str, float] = {}
+    rows_by_zoom: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
 
     with connection.cursor() as cur:
         if bench.zoom_levels:
@@ -342,22 +367,31 @@ def run_value_benchmark(
                     if not trajectory_ids:
                         continue
                     for trajectory_id in trajectory_ids:
-                        cur.execute(sql, (trajectory_id,))
+                        cur.execute(sql, (trajectory_id, *bench.params))
                         row = cur.fetchone()
                         if row and row[0] is not None:
                             values.append(float(row[0]))
+                        if bench.capture_rows and row:
+                            rows_by_zoom[zoom].append(_row_to_mapping(row, bench.row_field_names))
                 elif bench.with_stop_ids:
                     if not stop_ids:
                         continue
                     for stop_id in stop_ids:
-                        cur.execute(sql, (stop_id,))
+                        cur.execute(sql, (stop_id, *bench.params))
                         row = cur.fetchone()
                         if row and row[0] is not None:
                             values.append(float(row[0]))
+                        if bench.capture_rows and row:
+                            rows_by_zoom[zoom].append(_row_to_mapping(row, bench.row_field_names))
                 else:
-                    cur.execute(sql)
-                    rows = cur.fetchall()
-                    values.extend(float(row[0]) for row in rows if row and row[0] is not None)
+                    cur.execute(sql, bench.params)
+                    for row in cur.fetchall():
+                        if not row:
+                            continue
+                        if row[0] is not None:
+                            values.append(float(row[0]))
+                        if bench.capture_rows:
+                            rows_by_zoom[zoom].append(_row_to_mapping(row, bench.row_field_names))
 
                 if values:
                     median_values[zoom] = median(values)
@@ -365,15 +399,15 @@ def run_value_benchmark(
             params: Any = None
             if bench.with_trajectory_ids:
                 if not trajectory_ids:
-                    return ValueBenchmarkResult(bench.name, {})
+                    return ValueBenchmarkResult(bench.name, {}, {})
                 params = {"trajectory_ids": trajectory_ids}
             elif bench.with_stop_ids:
                 if not stop_ids:
-                    return ValueBenchmarkResult(bench.name, {})
+                    return ValueBenchmarkResult(bench.name, {}, {})
                 params = {"stop_ids": stop_ids}
 
             if params is None:
-                cur.execute(bench.sql)
+                cur.execute(bench.sql, bench.params)
             else:
                 cur.execute(bench.sql, params)
 
@@ -384,14 +418,18 @@ def run_value_benchmark(
                 if label is None or value is None:
                     continue
                 median_values[str(label)] = float(value)
+                if bench.capture_rows:
+                    rows_by_zoom["default"].append(_row_to_mapping(row, bench.row_field_names))
 
-    return ValueBenchmarkResult(bench.name, median_values)
+    return ValueBenchmarkResult(bench.name, median_values, dict(rows_by_zoom))
+
 
 def _print_run(label: str, run: RunOutcome, indent: str = "") -> None:
     if run.timed_out:
         print(f"{indent}{label}: (TIMEOUT)")
     else:
         print(f"{indent}{label}: exec_ms(median)={run.exec_ms_med}, wall_ms(median)={run.wall_ms_med}")
+
 
 def print_time_result(result: TimeBenchmarkResult) -> None:
     print(f"\n--- {result.name} ---")

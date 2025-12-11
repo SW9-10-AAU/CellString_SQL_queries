@@ -112,6 +112,8 @@ def _collect_tables_from_benchmark(benchmark):
         return _collect_tables(benchmark.st_sql, benchmark.cst_sql)
     if isinstance(benchmark, ValueBenchmark):
         return _collect_tables(benchmark.sql)
+    if hasattr(benchmark, 'sql'):
+        return _collect_tables(benchmark.sql)
     return []
 
 
@@ -141,7 +143,10 @@ def _serialize_time_result(result: TimeBenchmarkResult) -> dict:
 
 
 def _serialize_value_result(result: ValueBenchmarkResult) -> dict:
-    return {"median_values": result.median_values}
+    payload = {"median_values": result.median_values}
+    if result.rows_by_zoom:
+        payload["rows_by_zoom"] = result.rows_by_zoom
+    return payload
 
 
 def _write_json_report(payload: dict, run_started_at: datetime) -> Path:

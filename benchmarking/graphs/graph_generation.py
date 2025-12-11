@@ -1,4 +1,5 @@
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -20,6 +21,12 @@ SERIES_SYMBOL_MAP = {
     "LineString": "circle",
     "z13": "square",
     "z17": "diamond",
+    "z21": "x",
+}
+SERIES_PATTERN_MAP = {
+    "LineString": "",
+    "z13": "/",
+    "z17": "\\",
     "z21": "x",
 }
 
@@ -64,6 +71,19 @@ def _filter_benchmarks(benchmarks: List[Dict[str, Any]], selected: Optional[List
         return benchmarks
     wanted = set(selected)
     return [bench for bench in benchmarks if bench["name"] in wanted]
+
+
+def _parse_plot_filters(selected: Optional[List[str]]) -> Optional[Dict[str, List[Optional[str]]]]:
+    if not selected:
+        return None
+    parsed: Dict[str, List[Optional[str]]] = {}
+    for entry in selected:
+        if ":" in entry:
+            name, arg = entry.split(":", 1)
+        else:
+            name, arg = entry, None
+        parsed.setdefault(name.lower(), []).append(arg)
+    return parsed
 
 
 def _get_cardinality_map(cards: Dict[str, Any], zoom: str) -> Dict[int, int]:
@@ -901,6 +921,218 @@ def plot_crossing_via_exec_times(
     print(f"Wrote Crossing Via Execution Times bar-plot to {output_path}")
 
 
+def plot_intersection_area_exec_times(
+        benchmarks: List[Dict[str, Any]],
+        zoom_order: Optional[List[str]] = None,
+) -> None:
+    AREAS_TO_DISPLAY = ["1", "23", "2", "21",]
+    
+    # Mapping from area ID to display name
+    AREA_NAMES = {
+        "1": "Læsø region",
+        "2": "Hals-Egense",
+        "21": "Hals-Egense*",
+        "23": "Læsø region*",
+    }
+    
+    # Define the display order - pairs of (original, displaced) for side-by-side comparison
+    # This controls the x-axis ordering
+    AREA_DISPLAY_ORDER = ["1", "23", "2", "21"]
+    
+    zooms = zoom_order or ["z13", "z17", "z21"]
+    rows: List[Dict[str, Any]] = []
+
+    for bench in benchmarks:
+        name = bench.get("name", "")
+        if name != "Find trajectories that intersects an area" or bench.get("benchmark_type") != "time":
+            continue
+        
+        result = bench.get("result", {})
+        per_area = result.get("per_area_results", {})
+        
+        for area, area_result in per_area.items():
+            # Skip areas not in the display list
+            if area not in AREAS_TO_DISPLAY:
+                continue
+            # Add LineString (ST_) result
+            st_result = area_result.get("ST_", {})
+            st_exec = st_result.get("exec_ms_med")
+            st_timeout = st_result.get("timed_out", False)
+            
+            if not st_timeout and st_exec is not None:
+                area_name = AREA_NAMES.get(area, f"Area {area}")
+                rows.append({"area": area, "area_name": area_name, "series": "LineString", "exec_ms": st_exec})
+            
+            # Add CellString results for each zoom level
+            for zoom in zooms:
+                cst_key = f"CST_{zoom}"
+                cst_result = area_result.get(cst_key, {})
+                cst_exec = cst_result.get("exec_ms_med")
+                cst_timeout = cst_result.get("timed_out", False)
+                
+                if not cst_timeout and cst_exec is not None:
+                    area_name = AREA_NAMES.get(area, f"Area {area}")
+                    rows.append({"area": area, "area_name": area_name, "series": zoom, "exec_ms": cst_exec})
+
+    if not rows:
+        print("No intersection area benchmark data found; skipping plot.")
+        return
+    
+    # Create the bar chart
+    df = pd.DataFrame(rows)
+    
+    # Sort by custom display order
+    df["area_order"] = df["area"].map({area: idx for idx, area in enumerate(AREA_DISPLAY_ORDER)})
+    df = df.sort_values("area_order")
+    
+    fig = px.bar(
+        df,
+        x="area_name",
+        y="exec_ms",
+        color="series",
+        color_discrete_map={**SERIES_COLOR_MAP},
+        barmode="group",
+        labels={"area_name": "Area", "exec_ms": "Execution time (ms)", "series": "Variant"},
+        log_y=True,
+        pattern_shape="series",
+        text_auto='.2f',
+        category_orders={
+            "series": ["LineString", *zooms],
+            "area_name": [AREA_NAMES.get(area, f"Area {area}") for area in AREA_DISPLAY_ORDER]
+        },
+    )
+    fig.update_traces(texttemplate="%{y:.2f} ms")
+    fig.update_layout(
+        width=1000,
+        height=650,
+    )
+    _apply_transparent_theme(fig, with_bar_text=True)
+    
+    output_path = _next_output_path("intersection_area_exec_times")
+    fig.write_image(output_path)
+    print(f"Wrote Intersection Area Execution Times bar-plot to {output_path}")
+
+
+def plot_area_mmsi_coverage(
+        benchmarks: List[Dict[str, Any]],
+        top_k: int = 5,
+) -> None:
+    coverage_by_area: Dict[str, Dict[str, Dict[str, float]]] = {}
+    HARD_CODED_AREA_ID = "3"
+    
+    for bench in benchmarks:
+        if bench.get("benchmark_type") != "value":
+            continue
+        if "MMSI Coverage" not in bench.get("name", ""):
+            continue
+        
+        rows_by_zoom = bench.get("result", {}).get("rows_by_zoom", {})
+        for zoom, rows in rows_by_zoom.items():
+            if not rows:
+                continue
+            for row in rows:
+                area_id = row.get("area_id")
+                mmsi = row.get("mmsi")
+                coverage = row.get("coverage_percent")
+                if area_id is None or mmsi is None or coverage is None:
+                    continue
+                area_key = str(area_id)
+                mmsi_key = str(mmsi)
+                try:
+                    coverage_value = float(coverage)
+                except (TypeError, ValueError):
+                    continue
+                area_bucket = coverage_by_area.setdefault(area_key, {})
+                zoom_bucket = area_bucket.setdefault(mmsi_key, {})
+                zoom_bucket[zoom] = coverage_value
+
+    if not coverage_by_area:
+        print("No MMSI coverage data found; skipping plot.")
+        return
+
+    areas_to_plot = [HARD_CODED_AREA_ID] if HARD_CODED_AREA_ID else sorted(coverage_by_area.keys(), key=int)
+
+    zoom_priority = ["z21", "z17", "z13"]
+
+    def _rank_mmsi(area_data: Dict[str, Dict[str, float]]) -> List[str]:
+        # Only consider MMSIs that have data for the primary zoom level (z21)
+        # This prevents mixing scores across different zoom levels
+        primary_zoom = zoom_priority[0]  # z21
+        
+        # Filter to only MMSIs that have the primary zoom level
+        candidates = {mmsi: data for mmsi, data in area_data.items() if primary_zoom in data}
+        
+        if not candidates:
+            # Fallback: if no MMSIs have z21, try z17, then z13
+            for zoom in zoom_priority[1:]:
+                candidates = {mmsi: data for mmsi, data in area_data.items() if zoom in data}
+                if candidates:
+                    primary_zoom = zoom
+                    break
+        
+        if not candidates:
+            return []
+        
+        # Rank by the primary zoom level
+        def score(mmsi: str) -> float:
+            return candidates[mmsi].get(primary_zoom, 0.0)
+        
+        ranked = sorted(candidates.keys(), key=score, reverse=True)
+        return ranked[:top_k]
+
+    for area_id in areas_to_plot:
+        area_data = coverage_by_area.get(area_id)
+        if not area_data:
+            print(f"Area {area_id} has no coverage data; skipping plot.")
+            continue
+        top_mmsis = _rank_mmsi(area_data)
+        if not top_mmsis:
+            print(f"Area {area_id} has no MMSIs to display; skipping plot.")
+            continue
+        
+        rows: List[Dict[str, Any]] = []
+        for mmsi in top_mmsis:
+            zoom_map = area_data[mmsi]
+            for zoom in ZOOM_ORDER:
+                coverage_value = zoom_map.get(zoom)
+                if coverage_value is None:
+                    continue
+                rows.append(
+                    {
+                        "area_id": area_id,
+                        "mmsi": mmsi,
+                        "zoom": zoom,
+                        "coverage_percent": coverage_value,
+                    }
+                )
+        
+        if not rows:
+            print(f"Area {area_id} has no zoom data to plot; skipping plot.")
+            continue
+
+        df = pd.DataFrame(rows)
+        fig = px.bar(
+            df,
+            x="mmsi",
+            y="coverage_percent",
+            color="zoom",
+            color_discrete_map=SERIES_COLOR_MAP,
+            barmode="group",
+            pattern_shape="zoom",
+            pattern_shape_map=SERIES_PATTERN_MAP,
+            category_orders={"zoom": ZOOM_ORDER, "mmsi": top_mmsis},
+            labels={"mmsi": "MMSI", "coverage_percent": "Coverage (%)", "zoom": "Zoom"},
+            text_auto=".1f",
+        )
+        fig.update_traces(texttemplate="%{y:.1f}%")
+        fig.update_layout(width=900, height=600)
+        fig.update_yaxes(ticksuffix="%")
+        _apply_transparent_theme(fig, with_bar_text=True)
+        output_path = _next_output_path(f"area_mmsi_coverage_area{area_id}")
+        fig.write_image(output_path)
+        print(f"Wrote Area {area_id} MMSI coverage plot to {output_path}")
+
+
 def run_all_graphs(
         report_path: Path,
         selected_benchmarks: Optional[List[str]] = None,
@@ -912,8 +1144,15 @@ def run_all_graphs(
         print("No benchmarks matched the requested filters; nothing to plot.")
         return
 
-    plot_filter = {name.lower() for name in selected_plots} if selected_plots else None
-    wants = lambda name: plot_filter is None or name.lower() in plot_filter
+    plot_filter_map = _parse_plot_filters(selected_plots)
+
+    def wants(name: str) -> bool:
+        return plot_filter_map is None or name.lower() in plot_filter_map
+
+    def plot_args(name: str) -> List[Optional[str]]:
+        if plot_filter_map is None:
+            return [None]
+        return plot_filter_map.get(name.lower(), [])
 
     length_stats = {entry["label"]: entry for entry in data["meta"].get("trajectory_stats", [])}
 
@@ -944,6 +1183,14 @@ def run_all_graphs(
 
     if wants("crossing_via_exec_times"):
         plot_crossing_via_exec_times(benchmarks)
+
+    if wants("intersection_area_exec_times"):
+        plot_intersection_area_exec_times(benchmarks)
+
+    if wants("area_mmsi_coverage"):
+        for arg in plot_args("area_mmsi_coverage"):
+            top_k = int(arg) if arg is not None else 5
+            plot_area_mmsi_coverage(benchmarks, top_k)
 
 
 def main(
@@ -978,3 +1225,4 @@ if __name__ == "__main__":
         else:
             benchmark_filters.append(arg)
     main(report_arg, benchmark_filters or None, plot_filters or None)
+

@@ -5,7 +5,8 @@ from .hausdorff_distance_benchmark import BENCHMARK as hausdorff_distance_benchm
 from .intersects_with_stop_spatially_and_temporally import BENCHMARK as intersects_with_stop_spatially_and_temporally_benchmark
 from .via_query_benchmark import CROSSING_VIA_BENCHMARKS
 from .linestring_containment_benchmark import LINESTRING_CONTAINMENT_BENCHMARKS
+from .area_mmsi_coverage_benchmark import AREA_MMSI_COVERAGE_BENCHMARKS
 
 RUN_PLAN = [
-    *CROSSING_VIA_BENCHMARKS,
+    *AREA_MMSI_COVERAGE_BENCHMARKS,
 ]
