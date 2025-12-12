@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import time
+from collections import defaultdict
 from dataclasses import dataclass, field
+from decimal import Decimal
 from statistics import median
-from typing import Any, Dict, Iterable, List, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 
 @dataclass(frozen=True)
@@ -27,6 +29,11 @@ class ValueBenchmark:
     name: str
     sql: str
     zoom_levels: List[str] = field(default_factory=list)
+    with_trajectory_ids: bool = False
+    with_stop_ids: bool = False
+    params: Tuple[Any, ...] = tuple()
+    capture_rows: bool = False
+    row_field_names: Optional[List[str]] = None
 
 
 @dataclass
@@ -42,16 +49,18 @@ class RunOutcome:
 class TimeBenchmarkResult:
     name: str
     st: RunOutcome
-    cst_results: Dict[str,RunOutcome]
+    cst_results: Dict[str, RunOutcome]
     false_positives: Dict[str, int]
     false_negatives: Dict[str, int]
     per_area_results: Dict[int, Dict[str, RunOutcome]] = field(default_factory=dict)
+    match_counts: Dict[str, int] = field(default_factory=dict)
 
 
 @dataclass
 class ValueBenchmarkResult:
     name: str
     median_values: Dict[str, float]
+    rows_by_zoom: Dict[str, List[Dict[str, Any]]] = field(default_factory=dict)
 
 
 def _discard_and_set(cur, statement_timeout_seconds: int | None = None) -> None:
@@ -91,6 +100,24 @@ def _warmup(cur, sql: str, params: Sequence[Any], statement_timeout_seconds: int
 def _median_or_zero(values: Iterable[float]) -> float:
     values = list(values)
     return round(median(values), 3) if values else 0.0
+
+
+def _normalize_row_value(value: Any) -> Any:
+    if isinstance(value, Decimal):
+        return float(value)
+    return value
+
+
+def _row_to_mapping(row: Sequence[Any], field_names: Optional[List[str]]) -> Dict[str, Any]:
+    mapping: Dict[str, Any] = {}
+    if field_names:
+        for idx, name in enumerate(field_names):
+            if idx < len(row):
+                mapping[name] = _normalize_row_value(row[idx])
+        return mapping
+    for idx, value in enumerate(row):
+        mapping[f"col{idx}"] = _normalize_row_value(value)
+    return mapping
 
 
 def _aggregate_runs(runs: List[RunOutcome], rows: List[Tuple]) -> RunOutcome:
@@ -293,39 +320,116 @@ def run_time_benchmark(connection, bench: TimeBenchmark, trajectory_ids: List[in
     st_keys = _keyset(st_out.rows)
     false_positives: Dict[str, int] = {}
     false_negatives: Dict[str, int] = {}
+    match_counts: Dict[str, int] = {"LineString": len(st_keys)}
+
     for zoom, cst_out in cst_results.items():
         cst_keys = _keyset(cst_out.rows)
         false_positives[zoom] = len(cst_keys - st_keys)
         false_negatives[zoom] = len(st_keys - cst_keys)
+        match_counts[zoom] = len(cst_keys)
 
-    return TimeBenchmarkResult(bench.name, st_out, cst_results, false_positives, false_negatives, per_area_results,)
+    baseline_count = match_counts["LineString"]
+    false_positives["LineString"] = baseline_count
+    false_negatives["LineString"] = baseline_count
+
+    return TimeBenchmarkResult(
+        bench.name,
+        st_out,
+        cst_results,
+        false_positives,
+        false_negatives,
+        per_area_results,
+        match_counts,
+    )
 
 
-def run_value_benchmark(connection, bench: ValueBenchmark, trajectory_ids: List[int]) -> ValueBenchmarkResult:
+def run_value_benchmark(
+        connection,
+        bench: ValueBenchmark,
+        trajectory_ids: Optional[List[int]] = None,
+        stop_ids: Optional[List[int]] = None,
+) -> ValueBenchmarkResult:
     connection.autocommit = True
     connection.prepare_threshold = None
+    trajectory_ids = trajectory_ids or []
+    stop_ids = stop_ids or []
     median_values: Dict[str, float] = {}
+    rows_by_zoom: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
 
     with connection.cursor() as cur:
-        for zoom in bench.zoom_levels:
-            zoom_level_int = int(zoom.replace('z', ''))
-            sql = bench.sql.format(zoom=zoom, zoom_level=zoom_level_int)
-            values = []
-            for trajectory_id in trajectory_ids:
-                cur.execute(sql, (trajectory_id,))
-                row = cur.fetchone()
-                if row and row[0] is not None:
-                    values.append(row[0])
-            if values:
-                median_values[zoom] = median(values)
+        if bench.zoom_levels:
+            for zoom in bench.zoom_levels:
+                zoom_level_int = int(zoom.replace("z", "")) if zoom else 0
+                sql = bench.sql.format(zoom=zoom, zoom_level=zoom_level_int)
+                values: List[float] = []
 
-    return ValueBenchmarkResult(bench.name, median_values)
+                if bench.with_trajectory_ids:
+                    if not trajectory_ids:
+                        continue
+                    for trajectory_id in trajectory_ids:
+                        cur.execute(sql, (trajectory_id, *bench.params))
+                        row = cur.fetchone()
+                        if row and row[0] is not None:
+                            values.append(float(row[0]))
+                        if bench.capture_rows and row:
+                            rows_by_zoom[zoom].append(_row_to_mapping(row, bench.row_field_names))
+                elif bench.with_stop_ids:
+                    if not stop_ids:
+                        continue
+                    for stop_id in stop_ids:
+                        cur.execute(sql, (stop_id, *bench.params))
+                        row = cur.fetchone()
+                        if row and row[0] is not None:
+                            values.append(float(row[0]))
+                        if bench.capture_rows and row:
+                            rows_by_zoom[zoom].append(_row_to_mapping(row, bench.row_field_names))
+                else:
+                    cur.execute(sql, bench.params)
+                    for row in cur.fetchall():
+                        if not row:
+                            continue
+                        if row[0] is not None:
+                            values.append(float(row[0]))
+                        if bench.capture_rows:
+                            rows_by_zoom[zoom].append(_row_to_mapping(row, bench.row_field_names))
+
+                if values:
+                    median_values[zoom] = median(values)
+        else:
+            params: Any = None
+            if bench.with_trajectory_ids:
+                if not trajectory_ids:
+                    return ValueBenchmarkResult(bench.name, {}, {})
+                params = {"trajectory_ids": trajectory_ids}
+            elif bench.with_stop_ids:
+                if not stop_ids:
+                    return ValueBenchmarkResult(bench.name, {}, {})
+                params = {"stop_ids": stop_ids}
+
+            if params is None:
+                cur.execute(bench.sql, bench.params)
+            else:
+                cur.execute(bench.sql, params)
+
+            for row in cur.fetchall():
+                if not row or len(row) < 2:
+                    continue
+                label, value = row[0], row[1]
+                if label is None or value is None:
+                    continue
+                median_values[str(label)] = float(value)
+                if bench.capture_rows:
+                    rows_by_zoom["default"].append(_row_to_mapping(row, bench.row_field_names))
+
+    return ValueBenchmarkResult(bench.name, median_values, dict(rows_by_zoom))
+
 
 def _print_run(label: str, run: RunOutcome, indent: str = "") -> None:
     if run.timed_out:
         print(f"{indent}{label}: (TIMEOUT)")
     else:
         print(f"{indent}{label}: exec_ms(median)={run.exec_ms_med}, wall_ms(median)={run.wall_ms_med}")
+
 
 def print_time_result(result: TimeBenchmarkResult) -> None:
     print(f"\n--- {result.name} ---")

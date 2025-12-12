@@ -14,7 +14,7 @@ CST_SQL = """
 SELECT
     traj.trajectory_id
 FROM
-    prototype2.trajectory_cs AS traj,
+    prototype2.trajectory_supercover_cs AS traj,
     benchmark.area_cs AS area
 WHERE area.area_id = %s
     AND CST_Intersects(traj.cellstring_{zoom}, area.cellstring_{zoom});
@@ -28,6 +28,6 @@ BENCHMARK = TimeBenchmark(
     repeats=2,
     zoom_levels=["z13", "z17", "z21"],
     use_area_ids=True,
-    timeout_seconds=20,
+    timeout_seconds=30,
 )
 
