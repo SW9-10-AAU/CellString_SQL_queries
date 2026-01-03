@@ -8,5 +8,5 @@ from .linestring_containment_benchmark import LINESTRING_CONTAINMENT_BENCHMARKS
 from .area_mmsi_coverage_benchmark import AREA_MMSI_COVERAGE_BENCHMARKS
 
 RUN_PLAN = [
-    *AREA_MMSI_COVERAGE_BENCHMARKS,
+    *CROSSING_VIA_BENCHMARKS
 ]
