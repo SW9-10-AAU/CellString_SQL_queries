@@ -9,7 +9,7 @@ WITH p1 AS (
 p2 AS (
   SELECT
     trajectory_id,
-    SUM(COALESCE(CARDINALITY(cellstring), 0)) AS cell_count
+    SUM(COALESCE(CARDINALITY(cellstring_z21), 0)) AS cell_count
   FROM prototype2.trajectory_cs
   GROUP BY trajectory_id
 )

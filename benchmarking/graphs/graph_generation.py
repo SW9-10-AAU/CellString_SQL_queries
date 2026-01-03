@@ -463,7 +463,7 @@ def plot_cellstring_length(benchmarks: List[Dict[str, Any]], meta: Dict[str, Any
         symbol="zoom",
         symbol_map=SERIES_SYMBOL_MAP,
         category_orders={"zoom": ZOOM_ORDER},
-        labels={"cell_count": "CellString length (# of cells)", "exec_ms": "Execution time (ms)", "zoom": "Zoom level"},
+        labels={"cell_count": "CellString cardinality (# of cells)", "exec_ms": "Execution time (ms)", "zoom": "Zoom level"},
         log_y=True,
         log_x=True,
         trendline="lowess",
@@ -697,64 +697,110 @@ def plot_stop_cellstring_length_exec_time(
 
 
 def plot_exec_time_bars(
-        time_rows: List[Dict[str, Any]], selected_benchmarks: Optional[List[str]] = None
+    time_rows: List[Dict[str, Any]], selected_benchmarks: Optional[List[str]] = None
 ) -> None:
     if selected_benchmarks:
         selected = set(selected_benchmarks)
         time_rows = [row for row in time_rows if row["benchmark"] in selected]
+
     if not time_rows:
         print("No time benchmarks available for wall-time bars.")
         return
+
     bars: List[Dict[str, Any]] = []
-    emitted_st: Dict[str, Any] = {}
+    emitted_st: Dict[str, bool] = {}
+
     for row in time_rows:
         bench = row["benchmark"]
+        # Determine group based on benchmark name
+        bench_lower = bench.lower()
+        if "bresenham" in bench_lower:
+            group = "Bresenham"
+        elif "supercover" in bench_lower:
+            group = "Supercover"
+        else:
+            group = bench  # Fallback
+
+        # Add LineString bar (Single Thread) only once per benchmark
         if not emitted_st.get(bench):
-            bars.append({"benchmark": bench, "series": "LineString", "exec_ms": row["st_exec_ms"]})
+            bars.append({
+                "group": group,
+                "series": "LineString",
+                "exec_ms": row["st_exec_ms"]
+            })
             emitted_st[bench] = True
-        bars.append({"benchmark": bench, "series": f"{row['zoom']}", "exec_ms": row["cst_exec_ms"]})
+
+        # Add CellString bar for this zoom level
+        bars.append({
+            "group": group,
+            "series": str(row["zoom"]),
+            "exec_ms": row["cst_exec_ms"]
+        })
+
     df = pd.DataFrame(bars)
+
+    # Ensure consistent order for the bars: LineString first, then zooms
+    series_order = ["LineString"] + ZOOM_ORDER
+
     fig = px.bar(
         df,
-        x="series",
+        x="group",
         y="exec_ms",
         color="series",
-        color_discrete_sequence=px.colors.qualitative.Safe,
-        labels={"exec_ms": "Execution median (ms)", "series": ""},
-        log_y=True,
+        barmode="group",
+        color_discrete_map=SERIES_COLOR_MAP,
         pattern_shape="series",
-        text_auto='.3f',
+        pattern_shape_map=SERIES_PATTERN_MAP,
+        labels={"exec_ms": "Execution median (ms)", "series": "", "group": ""},
+        log_y=True,
+        text_auto=".3f",
+        category_orders={"series": series_order}
     )
-    fig.update_traces(texttemplate="%{y:.3f} ms")
-    fig.update_layout(
-        showlegend=False
+
+    fig.update_traces(
+        texttemplate="%{y:.2f}",
+        textposition="outside",
+        cliponaxis=False
     )
-    fig.update_xaxes(title_text="")
+
+    # Apply the consistent theme
     _apply_transparent_theme(fig, with_bar_text=True)
+
     output_path = _next_output_path("exec_time_bars")
     fig.write_image(output_path)
-    print(f"Wrote Execution time bars to {output_path}")
+    print(f"Saved execution time bars to {output_path}")
 
 
 def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
-    def _normalize_zoom_label(raw_zoom: Optional[str]) -> str:
-        if raw_zoom in (None, "", "LineString", "linestring", "st"):
-            return "LineString"
-        return str(raw_zoom)
+    group_metric_totals: Dict[str, Dict[str, Dict[str, float]]] = {}
 
-    metric_totals: Dict[str, Dict[str, float]] = {}
     for bench in benchmarks:
         if bench.get("benchmark_type") != "time":
             continue
+
+        # Determine group based on benchmark name
+        bench_name = bench.get("name", "")
+        bench_lower = bench_name.lower()
+        if "bresenham" in bench_lower:
+            group = "Bresenham"
+        elif "supercover" in bench_lower:
+            group = "Supercover"
+        else:
+            continue  # Skip benchmarks that aren't Bresenham or Supercover
+
         result = bench.get("result", {})
+
         for metric_key, metric_label in (
-            ("false_positives", "False Positives"),
-            ("false_negatives", "False Negatives"),
+            ("false_positives", "FP"),
+            ("false_negatives", "FN"),
         ):
             counts = result.get(metric_key)
             if not isinstance(counts, dict):
                 continue
-            bucket = metric_totals.setdefault(metric_label, {})
+
+            group_bucket = group_metric_totals.setdefault(group, {})
+            metric_bucket = group_bucket.setdefault(metric_label, {})
+
             for zoom, count in counts.items():
                 if count is None:
                     continue
@@ -762,46 +808,82 @@ def plot_false_match_counts(benchmarks: List[Dict[str, Any]]) -> None:
                     value = float(count)
                 except (TypeError, ValueError):
                     continue
-                label = _normalize_zoom_label(zoom)
-                bucket[label] = bucket.get(label, 0.0) + value
+                # Normalize zoom label
+                if zoom in (None, "", "linestring", "st"):
+                    label = "LineString"
+                else:
+                    label = str(zoom)
+                metric_bucket[label] = metric_bucket.get(label, 0.0) + value
 
+    # Build rows with % of LineString
     rows: List[Dict[str, Any]] = []
-    for metric, zoom_counts in metric_totals.items():
-        baseline = zoom_counts.get("LineString")
-        if baseline in (None, 0):
-            continue
-        for zoom, total in zoom_counts.items():
-            if zoom == "LineString":
+    for group, metrics in group_metric_totals.items():
+        for metric_label, zoom_counts in metrics.items():
+            baseline = zoom_counts.get("LineString")
+            if baseline in (None, 0):
                 continue
-            pct_delta = (total / baseline) * 100
-            rows.append({"zoom": zoom, "metric": metric, "pct_delta": pct_delta})
+            for zoom, total in zoom_counts.items():
+                if zoom == "LineString":
+                    continue
+                pct_delta = (total / baseline) * 100
+                rows.append({
+                    "group": group,
+                    "zoom": zoom,
+                    "metric": metric_label,
+                    "pct_delta": pct_delta,
+                })
 
     if not rows:
         print("No relative false positive/negative data to plot.")
         return
 
     df = pd.DataFrame(rows)
-    zoom_order = sorted(df["zoom"].unique(), key=lambda z: (len(z), z))
-    df["zoom"] = pd.Categorical(df["zoom"], categories=zoom_order, ordered=True)
+
+    # Create a combined series label for color grouping (e.g., "z13 False Positive")
+    df["series"] = df["zoom"] + " " + df["metric"]
+
+    # Define ordering for series (zoom levels x metrics)
+    series_order = []
+    for zoom in ZOOM_ORDER:
+        for metric in ["FP", "FN"]:
+            series_order.append(f"{zoom} {metric}")
+
+    # Filter to only include series that exist in the data
+    series_order = [s for s in series_order if s in df["series"].values]
+
+    # Create color and pattern maps for the series
+    series_color_map = {}
+    series_pattern_map = {}
+    for zoom in ZOOM_ORDER:
+        for metric in ["FP", "FN"]:
+            series_label = f"{zoom} {metric}"
+            series_color_map[series_label] = SERIES_COLOR_MAP.get(zoom, SAFE[0])
+            # Use different patterns for false positive vs negative
+            if metric == "FP":
+                series_pattern_map[series_label] = ""
+            else:
+                series_pattern_map[series_label] = "/"
 
     fig = px.bar(
         df,
-        x="zoom",
+        x="group",
         y="pct_delta",
-        color="metric",
-        color_discrete_sequence=px.colors.qualitative.Safe,
+        color="series",
+        color_discrete_map=series_color_map,
         barmode="group",
-        labels={"zoom": "", "pct_delta": "% of LineString", "metric": "Metric"},
-        pattern_shape="metric",
+        labels={"group": "", "pct_delta": "% of LineString", "series": ""},
+        pattern_shape="series",
+        pattern_shape_map=series_pattern_map,
         text_auto='.1f',
+        category_orders={"series": series_order},
     )
     fig.update_traces(texttemplate="%{y:.1f}%")
-    fig.update_layout(width=700, height=600)
+    fig.update_layout(width=900, height=600)
     y_min = 0
     y_max = max(df["pct_delta"].max(), 0) + 5
     fig.update_yaxes(
         autorange=False,
-        range=[y_min,y_max],
+        range=[y_min, y_max],
         ticksuffix="%",
     )
     fig.update_xaxes(title_text="")
@@ -905,17 +987,17 @@ def plot_crossing_via_exec_times(
         color="series",
         color_discrete_sequence=px.colors.qualitative.Safe,
         barmode="group",
-        labels={"route": "Route", "exec_ms": "Execution time (ms)", "series": "Variant"},
+        labels={"route": "Route", "exec_ms": "Execution median (ms)", "series": "Variant"},
         log_y=True,
         pattern_shape="series",
         text_auto='.2f',
     )
-    fig.update_traces(texttemplate="%{y:.2f} ms")
+    fig.update_traces(texttemplate="%{y:.2f}")
     fig.update_layout(
         width=1000,
         height=650,
     )
-    _apply_transparent_theme(fig, with_bar_text=True)
+    _apply_transparent_theme(fig, with_bar_text=True, left_legend=True)
     output_path = _next_output_path("crossing_via_exec_times")
     fig.write_image(output_path)
     print(f"Wrote Crossing Via Execution Times bar-plot to {output_path}")
@@ -929,10 +1011,10 @@ def plot_intersection_area_exec_times(
     
     # Mapping from area ID to display name
     AREA_NAMES = {
-        "1": "Læsø region",
+        "1": "Læsø",
         "2": "Hals-Egense",
         "21": "Hals-Egense*",
-        "23": "Læsø region*",
+        "23": "Læsø*",
     }
     
     # Define the display order - pairs of (original, displaced) for side-by-side comparison
@@ -992,7 +1074,7 @@ def plot_intersection_area_exec_times(
         color="series",
         color_discrete_map={**SERIES_COLOR_MAP},
         barmode="group",
-        labels={"area_name": "Area", "exec_ms": "Execution time (ms)", "series": "Variant"},
+        labels={"area_name": "Area", "exec_ms": "Execution median (ms)", "series": "Variant"},
         log_y=True,
         pattern_shape="series",
         text_auto='.2f',
@@ -1001,7 +1083,7 @@ def plot_intersection_area_exec_times(
             "area_name": [AREA_NAMES.get(area, f"Area {area}") for area in AREA_DISPLAY_ORDER]
         },
     )
-    fig.update_traces(texttemplate="%{y:.2f} ms")
+    fig.update_traces(texttemplate="%{y:.2f}")
     fig.update_layout(
         width=1000,
         height=650,
@@ -1015,10 +1097,11 @@ def plot_intersection_area_exec_times(
 
 def plot_area_mmsi_coverage(
         benchmarks: List[Dict[str, Any]],
-        top_k: int = 5,
+        top_k: int = 3,
 ) -> None:
+    """Plot MMSI coverage for areas 2 and 3 combined into a single chart with top 5 MMSIs per area."""
     coverage_by_area: Dict[str, Dict[str, Dict[str, float]]] = {}
-    HARD_CODED_AREA_ID = "3"
+    HARD_CODED_AREA_ID = "2"
     
     for bench in benchmarks:
         if bench.get("benchmark_type") != "value":
@@ -1189,7 +1272,7 @@ def run_all_graphs(
 
     if wants("area_mmsi_coverage"):
         for arg in plot_args("area_mmsi_coverage"):
-            top_k = int(arg) if arg is not None else 5
+            top_k = int(arg) if arg is not None else 3
             plot_area_mmsi_coverage(benchmarks, top_k)
 
 
