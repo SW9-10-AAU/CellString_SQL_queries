@@ -18,7 +18,7 @@ select
           - cardinality(super_cs.cellstring_z21)
         )
         / nullif(cardinality(super_cs.cellstring_z21),0)
-    ), 2) as pct_increase_z21,
+    ), 4) as pct_increase_z21,
 
     round(avg(
         100.0 * (
@@ -26,7 +26,7 @@ select
           - cardinality(super_cs.cellstring_z17)
         )
         / nullif(cardinality(super_cs.cellstring_z17),0)
-    ), 2) as pct_increase_z17,
+    ), 4) as pct_increase_z17,
 
     round(avg(
         100.0 * (
@@ -34,7 +34,7 @@ select
           - cardinality(super_cs.cellstring_z13)
         )
         / nullif(cardinality(super_cs.cellstring_z13),0)
-    ), 2) as pct_increase_z13
+    ), 4) as pct_increase_z13
 
 from prototype2.trajectory_supercover_cs super_cs
 join prototype2.trajectory_contained_supercover_cs contain_super

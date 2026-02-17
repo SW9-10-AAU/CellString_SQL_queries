@@ -52,7 +52,7 @@ WITH polygons AS (
         ON ls.trajectory_id = cs.trajectory_id
     JOIN prototype2.trajectory_supercover_cs cs_noncontained
         ON ls.trajectory_id = cs_noncontained.trajectory_id
-    WHERE ls.trajectory_id = 13
+    WHERE ls.trajectory_id = 2837
 )
 
 SELECT trajectory_id, mmsi, 'contained_supercover' AS type, cells_z21 AS geom
