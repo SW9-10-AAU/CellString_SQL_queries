@@ -4,6 +4,10 @@
 SELECT
     ls.trajectory_id,
     ls.mmsi,
+    ls.ts_start,
+    ls.ts_end,
+    cs.ts_start,
+    cs.ts_end,
     ls.geom AS original_trajectory,
 
     -- Decoded CellString as polygons at different zoom levels
@@ -24,8 +28,42 @@ SELECT
 FROM prototype2.trajectory_ls ls
 JOIN prototype2.trajectory_contained_supercover_cs cs
     ON ls.trajectory_id = cs.trajectory_id
-WHERE ls.trajectory_id = 656;
+WHERE ls.trajectory_id = 3978;
 
--- on border example
---13
---LINESTRING (13.021545410156252 55.63551712036133, 13.02154541015625 55.63551712036133)
+--
+SELECT cs.trajectory_id
+FROM prototype2.trajectory_cs cs
+JOIN prototype2.trajectory_contained_supercover_cs cscover
+  ON cs.trajectory_id = cscover.trajectory_id
+WHERE cs.ts_start IS DISTINCT FROM cscover.ts_start
+   OR cs.ts_end   IS DISTINCT FROM cscover.ts_end;
+
+
+-- visualize the difference in cell coverage between regular supercover and contained supercover for a specific trajectory
+WITH polygons AS (
+    SELECT
+        ls.trajectory_id,
+        ls.mmsi,
+        ls.geom AS original_trajectory,
+        CST_AsMultiPolygon(cs.cellstring_z21, 21) AS cells_z21,
+        CST_AsMultiPolygon(cs_noncontained.cellstring_z21, 21) AS noncontained_cells_z21
+    FROM prototype2.trajectory_ls ls
+    JOIN prototype2.trajectory_contained_supercover_cs cs
+        ON ls.trajectory_id = cs.trajectory_id
+    JOIN prototype2.trajectory_supercover_cs cs_noncontained
+        ON ls.trajectory_id = cs_noncontained.trajectory_id
+    WHERE ls.trajectory_id = 13
+)
+
+SELECT trajectory_id, mmsi, 'contained_supercover' AS type, cells_z21 AS geom
+FROM polygons
+
+UNION ALL
+
+SELECT trajectory_id, mmsi, 'regular_supercover' AS type, noncontained_cells_z21 AS geom
+FROM polygons
+
+UNION ALL
+
+SELECT trajectory_id, mmsi, 'original_traj' AS type, original_trajectory AS geom
+FROM polygons

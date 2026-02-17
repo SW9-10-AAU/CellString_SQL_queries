@@ -1,5 +1,5 @@
  -- Contained supercover stats on cardinality of cellstrings at different zoom levels
-select cardinality(super_cs.cellstring_z21) as superz21,
+select contain_super.trajectory_id, cardinality(super_cs.cellstring_z21) as superz21,
        cardinality(contain_super.cellstring_z21) as contain_superz21,
        cardinality(super_cs.cellstring_z17) as superz17,
        cardinality(contain_super.cellstring_z17) as contain_superz17,
@@ -8,9 +8,9 @@ select cardinality(super_cs.cellstring_z21) as superz21,
 from prototype2.trajectory_supercover_cs as super_cs,
               prototype2.trajectory_contained_supercover_cs  as contain_super
 where super_cs.trajectory_id = contain_super.trajectory_id
-order by superz21 desc;
+order by contain_superz21 desc;
 
--- avg percentage increase in number of cells when using contained supercover vs regular supercover (increase which is expected)
+--avg percentage increase in number of cells when using contained supercover vs regular supercover (increase which is expected)
 select
     round(avg(
         100.0 * (
