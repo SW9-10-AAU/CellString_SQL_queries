@@ -44,9 +44,12 @@ join prototype2.trajectory_contained_supercover_cs contain_super
 -- contain - check for any violations of containment (should be zero if all trajectories are fully contained)
 SELECT ls.trajectory_id
 FROM prototype2.trajectory_ls ls
-         JOIN prototype2.trajectory_contained_supercover_cs cs
-              ON ls.trajectory_id = cs.trajectory_id
-WHERE ST_Contains(CST_AsMultiPolygon(cs.cellstring_z21, 21), ls.geom) = false;
+JOIN prototype2.trajectory_contained_supercover_cs cs
+    ON ls.trajectory_id = cs.trajectory_id
+WHERE NOT ST_Contains(CST_AsMultiPolygon(cs.cellstring_z21, 21), ls.geom)
+  AND NOT ST_Contains(CST_AsMultiPolygon(cs.cellstring_z17, 17), ls.geom)
+  AND NOT ST_Contains(CST_AsMultiPolygon(cs.cellstring_z13, 13), ls.geom);
+
 
 --cover - check for any violations of coverage (should be zero if all trajectories are fully covered)
 SELECT ls.trajectory_id
