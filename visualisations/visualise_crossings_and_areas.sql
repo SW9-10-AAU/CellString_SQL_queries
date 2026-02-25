@@ -3,12 +3,13 @@ SELECT
     area_cs.area_id,
     area_cs.name,
     area_poly.geom,
-    CST_AsMultiPolygon(cellstring_z21, 21) as cellstring_z21,
-    CST_AsMultiPolygon(cellstring_z17, 17) as cellstring_z17,
+--     CST_AsMultiPolygon(cellstring_z21, 21) as cellstring_z21,
+--     CST_AsMultiPolygon(cellstring_z17, 17) as cellstring_z17,
     CST_AsMultiPolygon(cellstring_z13, 13) as cellstring_z13
 FROM benchmark.area_cs as area_cs
 JOIN benchmark.area_poly as area_poly on area_cs.area_id = area_poly.area_id
-WHERE area_cs.area_id NOT IN (1, 23); -- Excluding Læsø region (too large in z21)
+WHERE area_cs.area_id = 26;
+-- WHERE area_cs.area_id NOT IN (1, 23); -- Excluding Læsø region (too large in z21)
 
 -- Crossings
 SELECT
