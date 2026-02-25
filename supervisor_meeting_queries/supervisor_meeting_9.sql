@@ -26,14 +26,14 @@ ORDER BY num_cells_z21 DESC;
 SELECT
     ls.trajectory_id,
     ls.mmsi,
-    ls.geom AS trajectory_geom,
+    --ls.geom AS trajectory_geom,
     CST_AsMultiPolygon(cs.cellstring_z13, 13) AS cells_z13,
     CST_AsMultiPolygon(cs.cellstring_z17, 17) AS cells_z17,
     CST_AsMultiPolygon(cs.cellstring_z21, 21) AS cells_z21
 FROM prototype2.trajectory_ls ls
 JOIN prototype2.trajectory_supercover_cs cs
     ON ls.trajectory_id = cs.trajectory_id
-WHERE ls.trajectory_id IN (8403);
+WHERE ls.trajectory_id IN (103);
 
 -- STOP: Visualisering af CellString på forskellige zoomniveauer + LineString
 SELECT
