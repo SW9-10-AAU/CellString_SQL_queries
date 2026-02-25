@@ -1007,19 +1007,21 @@ def plot_intersection_area_exec_times(
         benchmarks: List[Dict[str, Any]],
         zoom_order: Optional[List[str]] = None,
 ) -> None:
-    AREAS_TO_DISPLAY = ["1", "23", "2", "21",]
+    AREAS_TO_DISPLAY = ["1", "23", "3", "22", "2", "21",]
     
     # Mapping from area ID to display name
     AREA_NAMES = {
         "1": "Læsø",
-        "2": "Hals-Egense",
-        "21": "Hals-Egense*",
+        "2": "H-E",
+        "3": "H-H",
+        "21": "H-E*",
+        "22": "H-H*",
         "23": "Læsø*",
     }
     
     # Define the display order - pairs of (original, displaced) for side-by-side comparison
     # This controls the x-axis ordering
-    AREA_DISPLAY_ORDER = ["1", "23", "2", "21"]
+    AREA_DISPLAY_ORDER = ["1", "23", "3", "22", "2", "21"]
     
     zooms = zoom_order or ["z13", "z17", "z21"]
     rows: List[Dict[str, Any]] = []
