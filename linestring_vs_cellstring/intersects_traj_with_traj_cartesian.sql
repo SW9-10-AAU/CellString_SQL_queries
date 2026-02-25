@@ -1,8 +1,7 @@
 -- Trajectory intersects with trajectory, cartesian product (simple query)
 
 --- ST_ version (1.4s) ---
-SELECT
-    trajA.trajectory_id,
+SELECT DISTINCT
     trajB.trajectory_id
 FROM
     prototype2.trajectory_ls AS trajA,

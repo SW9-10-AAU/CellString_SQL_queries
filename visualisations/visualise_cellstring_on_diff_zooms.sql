@@ -51,7 +51,7 @@ SELECT
     CST_AsMultiPolygon(cs.cellstring_z17, 17) AS cells_z17,
     CST_AsMultiPolygon(cs.cellstring_z21, 21) AS cells_z21
 FROM prototype2.trajectory_ls ls
-JOIN prototype2.trajectory_cs cs
+JOIN prototype2.trajectory_supercover_cs cs
     ON ls.trajectory_id = cs.trajectory_id
 WHERE ls.trajectory_id IN (8403);
 

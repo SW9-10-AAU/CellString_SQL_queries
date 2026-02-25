@@ -8,7 +8,7 @@ FROM
     prototype2.trajectory_ls AS traj,
     benchmark.area_poly as area
 WHERE
-    area.area_id = 3
+    area.area_id = 2
     AND ST_Intersects(traj.geom, area.geom);
 
 --- CellString version (Hals-Egense) (0.36s) ---
@@ -46,28 +46,26 @@ JOIN AREA ON CST_Intersects(traj13.cellstring_z21, area.cellstring_z21);
 
 
 --- ST_ version (Helsingør-Helsingborg) (1.5s) ---
-SELECT
-    traj.trajectory_id,
-    traj.mmsi
+SELECT DISTINCT
+    traj.trajectory_id
 FROM
     prototype2.trajectory_ls AS traj,
     benchmark.area_poly as area
 WHERE
+--     area.area_id = 22
     area.area_id = 3
     AND ST_Intersects(traj.geom, area.geom);
 
 --- CellString version (Helsingør-Helsingborg) (8s) ---
-EXPLAIN (ANALYZE, BUFFERS)
-SELECT
-    traj.trajectory_id,
-    traj.mmsi
+SELECT DISTINCT
+    traj.trajectory_id
 FROM
     prototype2.trajectory_cs AS traj,
     benchmark.area_cs as area
 WHERE
+--     area.area_id = 22
     area.area_id = 3
-    AND traj.cellstring_z13 && area.cellstring_z13
-    AND traj.cellstring_z21 && area.cellstring_z21;
+    AND CST_Intersects(traj.cellstring_z13,area.cellstring_z13);
 
 EXPLAIN (ANALYZE, BUFFERS)
 SELECT

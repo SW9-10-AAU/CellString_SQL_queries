@@ -5,6 +5,7 @@
 --- ST_ version (Skagen, Storebælt and Bornholm) (2.1s) ---
 SELECT
     traj.trajectory_id,
+    traj.geom,
     traj.mmsi
 FROM
     prototype2.trajectory_ls AS traj,

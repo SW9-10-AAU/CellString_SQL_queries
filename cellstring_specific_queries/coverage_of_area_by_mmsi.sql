@@ -3,8 +3,14 @@ SELECT *
 FROM CST_Coverage_ByMMSI(
   'prototype2.trajectory_supercover_cs',
   13,
-  (SELECT cellstring_z13 FROM benchmark.area_cs WHERE area_id = 3)
+  (SELECT cellstring_z13 FROM benchmark.area_cs WHERE area_id = 26)
 );
+
+SELECT *
+FROM cst_tilexy(110987570647260, 21);
+
+SELECT *
+FROM cst_CellAsPoint(110987570647260,21);
 
 
 -- Alternatively, using the following explicit SQL:
