@@ -32,8 +32,8 @@ FROM db_design1_linecover_queriestest.trajectory_cs t
 JOIN target_cells tc
   ON t.cell_z21 = tc.cell_z21
 WHERE t.trajectory_id <> 33
-AND t.ts BETWEEN tc.ts - INTERVAL '30000 seconds'
-AND tc.ts + INTERVAL '30000 seconds'
+AND t.ts BETWEEN tc.ts - INTERVAL '300000 seconds'
+AND tc.ts + INTERVAL '300000 seconds'
 
 UNION ALL
 

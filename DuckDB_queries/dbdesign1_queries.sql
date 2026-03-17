@@ -13,31 +13,41 @@ SELECT EXISTS (SELECT cell_z21
 
 
 --Intersects (trajectories)
-WITH target_cells AS (SELECT cell_z21
+WITH query_cellstring AS (SELECT cell_z21
                       FROM db_design1_linecover_queriestest.trajectory_cs
                       WHERE trajectory_id = 33)
 SELECT DISTINCT t.trajectory_id
 FROM db_design1_linecover_queriestest.trajectory_cs t
-         JOIN target_cells tc
+         JOIN query_cellstring tc
               ON t.cell_z21 = tc.cell_z21
 WHERE t.trajectory_id <> 33;
 
 --Intersects (trajectories - stop)
-WITH target_cells AS (SELECT cell_z21
+WITH query_cellstring AS (SELECT cell_z21
                       FROM db_design1_linecover_queriestest.trajectory_cs
                       WHERE trajectory_id = 33)
 SELECT DISTINCT t.stop_id
 FROM db_design1_linecover_queriestest.stop_cs t
-         JOIN target_cells tc
+         JOIN query_cellstring tc
               ON t.cell_z21 = tc.cell_z21;
 
+--Intersects with time (trajectories - stop)
+WITH query_cellstring AS (SELECT cell_z21, ts
+                      FROM db_design1_linecover_queriestest.trajectory_cs
+                      WHERE trajectory_id = 4)
+SELECT DISTINCT t.stop_id
+FROM db_design1_linecover_queriestest.stop_cs t
+         JOIN query_cellstring tc
+              ON t.cell_z21 = tc.cell_z21
+        Where tc.ts BETWEEN t.ts_start AND t.ts_end;
+
 --Intersects with time (trajectories)
-WITH target_cells AS (SELECT cell_z21, ts
+WITH query_cellstring AS (SELECT cell_z21, ts
                       FROM db_design1_linecover_queriestest.trajectory_cs
                       WHERE trajectory_id = 33)
 SELECT DISTINCT t.trajectory_id,
 FROM db_design1_linecover_queriestest.trajectory_cs t
-         JOIN target_cells tc
+         JOIN query_cellstring tc
               ON t.cell_z21 = tc.cell_z21
 WHERE t.trajectory_id <> 33
   AND t.ts BETWEEN tc.ts - INTERVAL '500 minutes'
@@ -45,19 +55,19 @@ WHERE t.trajectory_id <> 33
 
 
 --Intersection(trajectories)
-WITH target_cells AS (SELECT cell_z21,
+WITH query_cellstring AS (SELECT cell_z21,
                       FROM db_design1_linecover_queriestest.trajectory_cs
                       WHERE trajectory_id = 33)
 SELECT DISTINCT t.trajectory_id,
                 t.cell_z21 as overlap_cells,
 FROM db_design1_linecover_queriestest.trajectory_cs t
-         JOIN target_cells tc
+         JOIN query_cellstring tc
               ON t.cell_z21 = tc.cell_z21
 WHERE t.trajectory_id <> 33;
 
 
 --Intersection with time (trajectories)
-WITH target_cells AS (SELECT cell_z21, ts, mmsi
+WITH query_cellstring AS (SELECT cell_z21, ts, mmsi
                       FROM db_design1_linecover_queriestest.trajectory_cs
                       WHERE trajectory_id = 33)
 SELECT DISTINCT t.trajectory_id,
@@ -66,7 +76,7 @@ SELECT DISTINCT t.trajectory_id,
                 t.cell_z21                         as in_cell,
                 EXTRACT(EPOCH FROM (t.ts - tc.ts)) AS time_diff_seconds
 FROM db_design1_linecover_queriestest.trajectory_cs t
-         JOIN target_cells tc
+         JOIN query_cellstring tc
               ON t.cell_z21 = tc.cell_z21
 WHERE t.trajectory_id <> 33
   AND t.ts BETWEEN tc.ts - INTERVAL '5000 minutes'
@@ -74,7 +84,7 @@ WHERE t.trajectory_id <> 33
 ORDER BY time_diff_seconds ASC;
 
 --test count
-select count(cell_z21) from db_design1_linecover_queriestest.trajectory_cs where trajectory_id =32;
+select count(cell_z21) from db_design1_linecover_queriestest.trajectory_cs where trajectory_id =33;
 --UNION
 WITH a_cells AS (SELECT cell_z21, ts
                  FROM db_design1_linecover_queriestest.trajectory_cs
@@ -127,7 +137,7 @@ WITH a_cells AS (
 b_cells AS (
     SELECT cell_z21
     FROM db_design1_linecover_queriestest.trajectory_cs
-    WHERE trajectory_id = 1251
+    WHERE trajectory_id = 1252
 )
 SELECT
     NOT EXISTS (
