@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import Dict, List, Tuple
 
 from dotenv import load_dotenv
-from benchmarking.connect import connect_to_db
+from PostgreSQL_queries.benchmarking.connect import connect_to_db
 
 JSON_PATH = Path("benchmarking/benchmark_results/run_20251209_095304.json")
 ZOOMS = ("z13", "z17", "z21")

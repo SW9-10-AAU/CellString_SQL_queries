@@ -8,8 +8,8 @@ from pathlib import Path
 from statistics import median
 from typing import Dict, List
 from dotenv import load_dotenv
-from benchmarking.connect import connect_to_db
-from benchmarking.core import (
+from PostgreSQL_queries.benchmarking.connect import connect_to_db
+from PostgreSQL_queries.benchmarking.core import (
     RunOutcome,
     TimeBenchmark,
     TimeBenchmarkResult,
@@ -20,7 +20,7 @@ from benchmarking.core import (
     run_value_benchmark,
     print_value_result
 )
-from benchmarking.benchmarks import RUN_PLAN
+from PostgreSQL_queries.benchmarking.benchmarks import RUN_PLAN
 
 
 ZOOM_LEVELS = ["z13", "z17", "z21"]

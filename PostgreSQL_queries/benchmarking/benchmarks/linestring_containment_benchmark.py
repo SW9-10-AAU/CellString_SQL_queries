@@ -1,4 +1,4 @@
-from benchmarking.core import ValueBenchmark
+from PostgreSQL_queries.benchmarking.core import ValueBenchmark
 
 def _build_sql(cellstring_table: str) -> str:
     return f"""

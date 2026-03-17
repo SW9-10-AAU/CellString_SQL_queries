@@ -1,4 +1,4 @@
-from benchmarking.core import ValueBenchmark
+from PostgreSQL_queries.benchmarking.core import ValueBenchmark
 
 ZOOM_LEVELS = ["z13", "z17", "z21"]
 TRAJECTORY_TABLE = "prototype2.trajectory_supercover_cs"

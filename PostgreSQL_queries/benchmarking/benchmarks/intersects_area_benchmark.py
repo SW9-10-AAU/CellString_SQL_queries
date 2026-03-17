@@ -1,4 +1,4 @@
-from benchmarking.core import TimeBenchmark
+from PostgreSQL_queries.benchmarking.core import TimeBenchmark
 
 ST_SQL = """
 SELECT
