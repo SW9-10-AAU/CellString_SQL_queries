@@ -1,6 +1,6 @@
 LOAD spatial;
 
-SELECT * FROM jgl_etl_performance_fix.trajectory_ls WHERE trajectory_id = 1;
+SELECT * FROM p10.trajectory_ls WHERE trajectory_id = 1;
 
 
 -- Visualise area (Kattegat)
@@ -102,7 +102,42 @@ FROM intersection_count i, total_area_count t;
 
 
 SELECT * FROM CST_CoverageByMMSI(
+    jgl_etl_performance_fix.area_cs,
     4,
     jgl_etl_performance_fix.trajectory_cs,
     jgl_etl_performance_fix.stop_cs
+);
+
+CREATE OR REPLACE MACRO CST_CoverageByMMSI(area_table, target_area_id, traj_table, stop_table) AS TABLE (
+    WITH area_cells AS (
+        SELECT
+            cell_z21,
+            COUNT(*) OVER() AS total_cells_in_area
+        FROM query_table(area_table)
+        WHERE area_id = target_area_id
+    ),
+    vessel_footprint AS (
+        SELECT mmsi, cell_z21 FROM query_table(traj_table)
+        UNION
+        SELECT mmsi, cell_z21 FROM query_table(stop_table)
+    ),
+    intersecting_cells AS (
+        SELECT
+            v.mmsi,
+            v.cell_z21,
+            a.total_cells_in_area
+        FROM vessel_footprint v
+        INNER JOIN area_cells a ON v.cell_z21 = a.cell_z21
+    )
+    SELECT
+        mmsi,
+        COUNT(cell_z21) AS intersecting_cells,
+        MAX(total_cells_in_area) AS total_area_cells,
+        ROUND(
+            (COUNT(cell_z21)::DOUBLE / NULLIF(MAX(total_cells_in_area), 0)) * 100,
+            4
+        ) AS coverage_percentage
+    FROM intersecting_cells
+    GROUP BY mmsi
+    ORDER BY coverage_percentage DESC
 );
