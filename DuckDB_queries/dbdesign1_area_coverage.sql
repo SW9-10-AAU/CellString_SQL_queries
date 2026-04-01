@@ -1,6 +1,11 @@
+INSTALL spatial;
 LOAD spatial;
 
 SELECT * FROM p10.trajectory_ls WHERE trajectory_id = 1;
+
+SELECT 'POINT(0 0)' AS geometry;
+
+SELECT trajectory_id, ts_start, ts_end, ST_AsText(ST_Force2D(geom)) AS shape FROM p10.trajectory_ls where trajectory_id = 1;
 
 
 -- Visualise area (Kattegat)
