@@ -14,13 +14,13 @@ SELECT EXISTS (SELECT cell_z21
 
 --Intersects (trajectories)
 WITH query_cellstring AS (SELECT cell_z21
-                      FROM db_design1_linecover_queriestest.trajectory_cs
-                      WHERE trajectory_id = 33)
-SELECT DISTINCT t.trajectory_id
-FROM db_design1_linecover_queriestest.trajectory_cs t
+                      FROM db_design1_queriestest.trajectory_cs
+                      WHERE mmsi = 219028133)
+SELECT DISTINCT t.mmsi, trajectory_id
+FROM db_design1_queriestest.trajectory_cs t
          JOIN query_cellstring tc
               ON t.cell_z21 = tc.cell_z21
-WHERE t.trajectory_id <> 33;
+WHERE t.mmsi <> 219028133;
 
 --Intersects (trajectories - stop)
 WITH query_cellstring AS (SELECT cell_z21
@@ -44,12 +44,12 @@ FROM db_design1_linecover_queriestest.stop_cs t
 --Intersects with time (trajectories)
 WITH query_cellstring AS (SELECT cell_z21, ts
                       FROM db_design1_linecover_queriestest.trajectory_cs
-                      WHERE trajectory_id = 33)
+                      WHERE trajectory_id = 1)
 SELECT DISTINCT t.trajectory_id,
 FROM db_design1_linecover_queriestest.trajectory_cs t
          JOIN query_cellstring tc
               ON t.cell_z21 = tc.cell_z21
-WHERE t.trajectory_id <> 33
+WHERE t.trajectory_id <> 1
   AND t.ts BETWEEN tc.ts - INTERVAL '500 minutes'
   AND tc.ts + INTERVAL '500 minutes';
 

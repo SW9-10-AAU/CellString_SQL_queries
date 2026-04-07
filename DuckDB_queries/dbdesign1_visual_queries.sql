@@ -6,7 +6,7 @@ Select trajectory_id, count(*) as cell_count from db_design1_queriestest.traject
 GROUP by trajectory_id;
 
 -- show the trajectory as a polygon
-SELECT ST_AsText(fast_CST_AsPolygon('db_design1_queriestest.trajectory_cs', 'trajectory_id', 1)) AS trajectory_linestring;
+SELECT ST_AsText(fast_CST_AsPolygon('db_design1_queriestest.trajectory_cs', 'trajectory_id', 1)) AS trajectory_poly;
 
 -- show the trajectory as cells
 SELECT
