@@ -1,4 +1,4 @@
-from benchmarking.core import ValueBenchmark
+from PostgreSQL_queries.benchmarking.core import ValueBenchmark
 
 SQL = """
 SELECT

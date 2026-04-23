@@ -1,4 +1,4 @@
-from benchmarking.core import TimeBenchmark
+from PostgreSQL_queries.benchmarking.core import TimeBenchmark
 
 ST_SQL = """
 SELECT DISTINCT
@@ -15,15 +15,15 @@ CST_SQL = """
 SELECT DISTINCT
     trajB.trajectory_id
 FROM
-    prototype2.trajectory_supercover_cs AS trajA,
-    prototype2.trajectory_supercover_cs AS trajB
+    prototype2.trajectory_cs AS trajA,
+    prototype2.trajectory_cs AS trajB
 WHERE trajA.trajectory_id <> trajB.trajectory_id
     AND trajA.trajectory_id = %s
     AND CST_Intersects(trajA.cellstring_{zoom}, trajB.cellstring_{zoom});
 """
 
 BENCHMARK = TimeBenchmark(
-    name="Find trajectories that intersects another trajectory - Supercover",
+    name="Find trajectories that intersects another trajectory - Bresenham",
     st_sql=ST_SQL,
     cst_sql=CST_SQL,
     with_trajectory_ids=True,

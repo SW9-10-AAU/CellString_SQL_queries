@@ -1,4 +1,4 @@
-from benchmarking.core import TimeBenchmark
+from PostgreSQL_queries.benchmarking.core import TimeBenchmark
 
 ZOOM_LEVELS = ["z13", "z17", "z21"]
 
