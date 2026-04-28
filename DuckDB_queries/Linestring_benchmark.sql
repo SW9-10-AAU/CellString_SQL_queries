@@ -121,8 +121,7 @@ WITH query_traj AS (
 )
 SELECT DISTINCT t.mmsi, t.trajectory_id, NULL::INTEGER AS stop_id, 'trajectory' AS source
 FROM query_traj q
-JOIN p10_ls.trajectory_ls t
-  ON ST_Intersects(t.geom, q.geom)
+JOIN p10_ls.trajectory_ls t ON ST_Intersects(t.geom, q.geom)
  AND t.mmsi <> q.mmsi
  AND t.ts_start <= q.ts_end
  AND t.ts_end >= q.ts_start
@@ -131,8 +130,7 @@ UNION ALL
 
 SELECT DISTINCT s.mmsi, NULL::INTEGER AS trajectory_id, s.stop_id, 'stop' AS source
 FROM query_traj q
-JOIN p10_ls.stop_poly s
-  ON ST_Intersects(s.geom, q.geom)
+JOIN p10_ls.stop_poly s ON ST_Intersects(s.geom, q.geom)
  AND s.mmsi <> q.mmsi
  AND s.ts_start <= q.ts_end
  AND s.ts_end >= q.ts_start;
