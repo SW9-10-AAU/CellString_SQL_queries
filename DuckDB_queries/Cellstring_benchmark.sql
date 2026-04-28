@@ -82,20 +82,20 @@ WITH query_traj AS (
     WHERE trajectory_id = getvariable('query_traj_id')
 )
 SELECT DISTINCT t.mmsi, t.trajectory_id, NULL::INTEGER AS stop_id, 'trajectory' AS source
-FROM p10_cs.trajectory_cs AS t
-JOIN query_traj AS q ON t.cell_z21 = q.cell_z21
-WHERE q.ts <= t.ts + (INTERVAL (t.delta_sec) SECOND)
-  AND q.ts + (INTERVAL (q.delta_sec) SECOND) >= t.ts;
-  AND t.mmsi <> q.mmsi;
+FROM p10_cs.trajectory_cs t
+JOIN query_traj q ON t.cell_z21 = q.cell_z21
+WHERE t.mmsi <> q.mmsi
+  AND t.ts <= q.ts + (INTERVAL (q.delta_sec) SECOND)
+  AND t.ts + (INTERVAL (t.delta_sec) SECOND) >= q.ts
 
 UNION ALL
 
-SELECT DISTINCT t.mmsi, NULL::INTEGER AS trajectory_id, s.stop_id, 'stop' AS source
+SELECT DISTINCT s.mmsi, NULL::INTEGER AS trajectory_id, s.stop_id, 'stop' AS source
 FROM p10_cs.stop_cs AS s
-JOIN query_traj AS q ON t.cell_z21 = q.cell_z21
-WHERE q.ts <= s.ts_end
-  AND q.ts + (INTERVAL (q.delta_sec) SECOND) >= s.ts_start;
-  AND s.mmsi <> q.mmsi;
+JOIN query_traj q ON s.cell_z21 = q.cell_z21
+WHERE s.mmsi <> q.mmsi
+  AND s.ts_start <= q.ts + (INTERVAL (q.delta_sec) SECOND)
+  AND s.ts_end >= q.ts;
 
 --------------------------------------------------------------------------------------------------------------
 --------------- Via Query ---------------
@@ -135,7 +135,7 @@ HAVING COUNT(DISTINCT p.passage_id) = 3;
 --------------------------------------------------------------------------------------------------------------
 --------------- CoverageByMMSI ---------------
 --------------------------------------------------------------------------------------------------------------
-SET VARIABLE coverage_region_id = 10;
+SET VARIABLE coverage_region_id = 7;
 SET VARIABLE zoom = 19;
 
 WITH query_region AS (
