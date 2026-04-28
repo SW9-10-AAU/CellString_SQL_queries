@@ -80,7 +80,8 @@ WITH query_region AS (
 SELECT DISTINCT t.mmsi, t.trajectory_id, NULL::INTEGER AS stop_id, r.region_id, 'trajectory' AS source
 FROM p10_cs.trajectory_cs t
 JOIN query_region r ON t.cell_z21 = r.cell_z21
-WHERE t.ts BETWEEN getvariable('ts_period_start') AND getvariable('ts_period_end')
+WHERE t.ts <= getvariable('ts_period_end')
+  AND t.ts + (INTERVAL (t.delta_sec) SECOND) >= getvariable('ts_period_start')
 
 UNION ALL
 
