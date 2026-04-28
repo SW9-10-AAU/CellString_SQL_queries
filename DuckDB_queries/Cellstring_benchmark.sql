@@ -2,6 +2,8 @@
 
 SET VARIABLE region_id = 3;
 
+SET VARIABLE query_traj_id = 2;
+
 -- 1_day
 -- SET VARIABLE ts_period_start = TIMESTAMP '2025-12-01 00:00:00.000';
 -- SET VARIABLE ts_period_end   = TIMESTAMP '2025-12-02 00:00:00.000';
@@ -74,7 +76,6 @@ WHERE s.ts_start <= getvariable('ts_period_end')
 --------------------------------------------------------------------------------------------------------------
 --------------- ID Temporal ---------------
 --------------------------------------------------------------------------------------------------------------
-SET VARIABLE query_traj_id = 101972;
 WITH query_traj AS (
     SELECT mmsi, trajectory_id, ts, delta_sec, cell_z21
     FROM p10_cs.trajectory_cs
